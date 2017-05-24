@@ -14,6 +14,7 @@ script:
   - ls -lsaR
   - cd bin
   - ./a.out
+  - ls -lsaR
 after_success:
 #  - echo $TRAVIS_PULL_REQUEST
 #  - echo $TRAVIS_BRANCH
