@@ -26,5 +26,5 @@ after_success:
   - git init
   - git add --all
   - git commit -m "deploy commit from travis"
-  - git push -f https://${GH_TOKEN}@github.com/imagirelab/rtc5.git master
+  - git push -f https://${GH_TOKEN}@github.com/imagire/rtc5.git master
   
