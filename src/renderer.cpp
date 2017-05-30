@@ -100,7 +100,7 @@ void renderer::update(const double *src, double *dest)const
 				double u = ((double)x + rnd.get()) * INV_WIDTH;
 				double v = ((double)y + rnd.get()) * INV_HEIGHT;
 
-				Vec3 color = this->color(u, 1.0 - v, rnd);// ‰æ‘œ“I‚Éã‰º‹t‚¾‚Á‚½‚Ì‚ÅAv‚ğ”½“]‚·‚é
+				Vec3 color = this->color(u, 1.0 - v, rnd);// ç”»åƒçš„ã«ä¸Šä¸‹é€†ã ã£ãŸã®ã§ã€vã‚’åè»¢ã™ã‚‹
 				dest[index + 0] = src[index + 0] + color.x;
 				dest[index + 1] = src[index + 1] + color.y;
 				dest[index + 2] = src[index + 2] + color.z;
