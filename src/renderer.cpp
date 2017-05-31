@@ -5,7 +5,13 @@
 #include <omp.h>
 #include "renderer.h"
 
+#ifndef MY_ASSERT
+#include <assert.h>
+#define MY_ASSERT(x) assert(x)
+#endif
+
 #define PI 3.141592653589793826433
+
 
 inline static double RGB2Y(double r, double g, double b)
 {
@@ -195,7 +201,7 @@ void renderer::median_filter(const double *src, double *dest)const
 						idx++;
 					}
 				}
-				_ASSERT(idx == 9);
+				MY_ASSERT(idx == 9);
 				// FORGETFULL SELECTION
 				// 最初の6個の内、最大の値と最小の値は無視する
 				// 次の１つを足した残り5つに関して、最大の値と最小の値は無視する
@@ -225,7 +231,7 @@ void renderer::median_filter(const double *src, double *dest)const
 					if (bak[i] < bak[n]) { count0++; }
 					if (bak[n] < bak[i]) { count1++; }
 				}
-				_ASSERT(count0 <= 4 && count1 <= 4);
+				MY_ASSERT(count0 <= 4 && count1 <= 4);
 
 
 				dest[dest_idx + 0] = src[index + 0];
