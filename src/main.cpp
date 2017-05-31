@@ -1,3 +1,5 @@
+﻿#include "config.h"
+
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 //#define _CRT_SECURE_NO_WARNINGS
 
@@ -70,19 +72,54 @@ int main()
 
 	// frame buffer の初期化
 	int current = 0;
-	double *fb[2];
-	fb[0] = new double[3 * WIDTH * HEIGHT];
-	fb[1] = new double[3 * WIDTH * HEIGHT];
+	double *fb[3];
+	fb[0] = new double[3 * WIDTH * HEIGHT];// ダブルバッファ1
+	fb[1] = new double[3 * WIDTH * HEIGHT];// ダブルバッファ2
+	fb[2] = new double[3 * WIDTH * HEIGHT];// 法線マップ用
 	initFB(fb[0]);
 	initFB(fb[1]);
+	initFB(fb[2]);
 
 	renderer *pRenderer = new renderer(WIDTH, HEIGHT);
 
+	// 初期描画
+	pRenderer->update(fb[1 - current], fb[current], fb[2]);
+	save(fb[current], image, "1st_render.png", 1);
+	current = 1 - current;
+
+	// メディアンフィルタでフィルタリング
+	pRenderer->median_filter(fb[1 - current], fb[current]);
+	save(fb[current], image, "median.png", 1);
+	current = 1 - current;
+
+	// 輝度抽出検出
+	pRenderer->get_luminance(fb[1 - current], fb[2]);
+	save(fb[2], image, "luminance.png", 1);
+	current = 1 - current;
+
+	// エッジ検出
+	pRenderer->edge_detection(fb[2], fb[1 - current]);
+	save(fb[1 - current], image, "edge.png", 1);
+	current = 1 - current;
+
+	// エッジのガウスブラー
+	pRenderer->gauss_blur_x(fb[current],fb[2]);
+	pRenderer->gauss_blur_y(fb[2],fb[current]);
+	save(fb[current], image, "edge_blurred.png", 1);
+
+	// 法線方向の検出
+	pRenderer->compute_normal(fb[current], fb[2]);
+	save(fb[2], image, "normal.png", 1);
+
+	// 再初期化
 	int frame = 0;
+	initFB(fb[current]);
+	current = 1 - current;
+
 	do
 	{
 		// fb[1-current] を読み込んで fb[current]にレンダリング
-		pRenderer->update(fb[1 - current], fb[current]);
+		pRenderer->update(fb[1 - current], fb[current], fb[2]);
 		frame++;
 
 		// 4分33秒以内に終了なので、前のフレームを考えてオーバーしそうならば終了する
@@ -109,8 +146,9 @@ int main()
 
 	delete pRenderer;
 	delete[] image;
-	delete[] fb[0];
+	delete[] fb[2];
 	delete[] fb[1];
+	delete[] fb[0];
 
 	return 0;
 }
