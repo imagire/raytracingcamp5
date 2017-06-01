@@ -63,8 +63,8 @@ void renderer::edge_detection(const double *src, double *dest)const
 }
 void renderer::gauss_blur_x(const double *src, double *dest) const
 {
-	const double sigma2_inv = -1.0 / (2.0 * 10.0 * 10.0);
-	const int KERNEL_SIZE = 30;
+	const double sigma2_inv = -1.0 / (2.0 * 20.0 * 20.0);
+	const int KERNEL_SIZE = 50;
 	double tbl[KERNEL_SIZE + 1] = { 1.0 };
 	double tbl_sum = 0.0;
 	for (int i = 1; i <= KERNEL_SIZE; i++) {
@@ -99,8 +99,8 @@ void renderer::gauss_blur_x(const double *src, double *dest) const
 
 void renderer::gauss_blur_y(const double *src, double *dest) const
 {
-	const double sigma2_inv = -1.0 / (2.0 * 10.0 * 10.0);
-	const int KERNEL_SIZE = 30;
+	const double sigma2_inv = -1.0 / (2.0 * 20.0 * 20.0);
+	const int KERNEL_SIZE = 50;
 	double tbl[KERNEL_SIZE + 1] = {1.0};
 	double tbl_sum = 0.0;
 	for (int i = 1; i <= KERNEL_SIZE; i++) {
@@ -350,10 +350,13 @@ void renderer::update(const double *src, double *dest, const double *normal_map)
 			for (int x = 0; x < WIDTH; x++) {
 				const double *n = normal_map + index;
 
-				double u = ((double)x + rnd.get()) * INV_WIDTH;
-				double v = ((double)y + rnd.get()) * INV_HEIGHT;
+				const double GAZE_SCALE = 7000.0;
 
-				Ray r = cam_.get_ray(u, 1.0 - v, rnd, Vec3(-10.0 * n[0], 10.0 * n[1], n[2]));// 画像的に上下逆だったので、vを反転する
+				double u = ((double)x + rnd.get() + GAZE_SCALE * n[0]) * INV_WIDTH;
+				double v = ((double)y + rnd.get() + GAZE_SCALE * n[1]) * INV_HEIGHT;
+
+				Ray r = cam_.get_ray(u, 1.0 - v, rnd);// 画像的に上下逆だったので、vを反転する
+//				Ray r = cam_.get_ray(u, 1.0 - v, rnd, Vec3(-10.0 * n[0], 10.0 * n[1], n[2]));// 画像的に上下逆だったので、vを反転する
 				Vec3 color = raytrace(r, 0, rnd);
 
 				dest[index + 0] = src[index + 0] + color.x;

@@ -16,9 +16,10 @@ public:
 	Camera() {}
 	void init(Vec3 from, Vec3 lookat, Vec3 up, double fov, double aspect, double aperture, double dist_to_focus);
 
-	Ray get_ray(double s, double t, my_rand &rnd, Vec3 bias) const {
-		Vec3 rd = Vec3::random_in_unit_disc(rnd) * (Vec3(lens_radius_, lens_radius_) + 5.0 * bias);
+	Ray get_ray(double s, double t, my_rand &rnd) const {
+//		Vec3 rd = Vec3::random_in_unit_disc(rnd) * (Vec3(lens_radius_, lens_radius_) + 5.0 * bias);
 //		Vec3 rd = Vec3::random_in_unit_disc(rnd) * lens_radius_ + bias;
+		Vec3 rd = Vec3::random_in_unit_disc(rnd) * lens_radius_;
 		Vec3 offset = u_ * rd.x + v_ * rd.y;
 		return Ray(origin_ + offset, lower_left_corner_ + horizontal_ * s + vertical_ * t - origin_ - offset);
 	}
