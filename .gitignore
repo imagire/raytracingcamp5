@@ -89,4 +89,4 @@ ipch/
 *.bak
 
 # プロジェクトの結果ファイル
-src/*.png
+exec/*.png
