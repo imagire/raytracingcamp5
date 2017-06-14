@@ -27,9 +27,9 @@ public:
 
 class IBL {
 private:
-	int w_ = 0, h_=0;
-	double dw_ = 0.0, dh_=0.0;
-	double *pImage_=nullptr;
+	int w_, h_;
+	double dw_, dh_;
+	double *pImage_;
 public:
 	IBL() { w_ = 0; h_ = 0; dw_ = 0.0; dh_ = 0.0; pImage_ = nullptr; }
 	~IBL() { SAFE_DELETE_ARRAY(pImage_); }
@@ -38,7 +38,7 @@ public:
 
 	inline Vec3 get(double u, double v) const { double *p = pImage_ + 3 * (w_*(int)(v*dh_) + (int)(u*dw_)); return Vec3(p[0], p[1], p[2]); }
 //	inline Vec3 get(const Vec3 d) const { return get(0.5 * d.x + 0.5, 0.5*d.y + 0.5); }
-	inline Vec3 get(const Vec3 d) const { return get(atan2(d.x, d.z) / (2.0*PI) + 0.5, acos(-d.y) / PI); }
+	inline Vec3 get(const Vec3 d) const { return get(atan2(d.x, d.z) / (2.0*PI) + 0.5, acos(-d.y) / PI); }// 上の式で読めるように変換したい…
 };
 
 class renderer{
