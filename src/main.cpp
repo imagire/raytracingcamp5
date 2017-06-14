@@ -33,7 +33,7 @@
 
 void save(const double *data, unsigned char *buf, const char *filename, int steps)
 {
-	const double coeff = 1.0 / (0.3 * (double)steps);
+	const double coeff = 1.0 / (double)steps;
 	
 	#pragma omp parallel
 	{
@@ -83,8 +83,12 @@ int main()
 
 	renderer *pRenderer = new renderer(WIDTH, HEIGHT);
 
-	HDRLoaderResult result;
-	bool ret = HDRLoader::load("media/Tokyo_BigSight/Tokyo_BigSight_3k.hdr", result);
+	HDRLoaderResult ibl_data;
+	bool ret = HDRLoader::load("media/Tokyo_BigSight/Tokyo_BigSight_3k.hdr", ibl_data);
+//	bool ret = HDRLoader::load("media/Ridgecrest_Road/Ridgecrest_Road_Env.hdr", ibl_data);
+
+	pRenderer->setIBL(ibl_data.width, ibl_data.height, ibl_data.cols);
+	delete[] ibl_data.cols;// コピーされるので、実体は使われない
 
 	// 初期描画
 	pRenderer->update(fb[1 - current], fb[current], fb[2]);

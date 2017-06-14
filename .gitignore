@@ -73,7 +73,7 @@ bld/
 ipch/
 *.aps
 *.ncb
-*.opendb
+
 *.opensdf
 *.sdf
 *.cachefile
@@ -89,4 +89,4 @@ ipch/
 *.bak
 
 # プロジェクトの結果ファイル
-exec/*.png
+runtime/*.png

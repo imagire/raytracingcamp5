@@ -25,6 +25,21 @@ public:
 	}
 };
 
+class IBL {
+private:
+	int w_ = 0, h_=0;
+	double dw_ = 0.0, dh_=0.0;
+	double *pImage_=nullptr;
+public:
+	IBL() {}
+	~IBL() { SAFE_DELETE_ARRAY(pImage_); }
+
+	bool initialize(int w, int h, const float *p);
+
+	inline Vec3 get(double u, double v) const { double *p = pImage_ + 3 * (w_*(int)(v*dh_) + (int)(u*dw_)); return Vec3(p[0], p[1], p[2]); }
+//	inline Vec3 get(const Vec3 d) const { return get(0.5 * d.x + 0.5, 0.5*d.y + 0.5); }
+	inline Vec3 get(const Vec3 d) const { return get(atan2(d.x, d.z) / (2.0*PI) + 0.5, acos(-d.y) / PI); }
+};
 
 class renderer{
 private:
@@ -33,12 +48,15 @@ private:
 	int HEIGHT;
 	Camera cam_;
 	HitableList scene_;
+	IBL ibl_;
 
 	Vec3 raytrace(Ray r, int depth, my_rand &rnd)const;
 public:
 	renderer(int w, int h);
 	~renderer();
 	
+	void setIBL(int width, int height, const float *image);
+
 	void update(const double *src, double *dest, const double *normal_map)const;// なるべく早く出ること
 	
 	void copy(const double *src, double *dest)const;

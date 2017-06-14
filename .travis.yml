@@ -12,7 +12,7 @@ script:
   - make depend
   - make
   - ls -lsaR
-  - cd ../exec
+  - cd ../runtime
   - mv ../src/bin/a.out ./
   - ./a.out
   - ls -lsaR

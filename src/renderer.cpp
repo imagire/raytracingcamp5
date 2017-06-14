@@ -3,14 +3,37 @@
 #include <cfloat>
 #include <time.h>
 #include <omp.h>
+#include "hdrloader.h"
 #include "renderer.h"
+
 
 #ifndef MY_ASSERT
 #include <assert.h>
 #define MY_ASSERT(x) assert(x)
 #endif
 
-#define PI 3.141592653589793826433
+bool IBL::initialize(int w, int h, const float *p)
+{
+	w_ = w;
+	h_ = h;
+	dw_ = w;
+	dh_ = h;
+
+	pImage_ = new double[3 * w * h];
+	if (!pImage_) return false;
+
+#pragma omp for
+	for (int y = 0; y < h; y++) {
+		// 上下をひっくり返してコピー
+		const float *src = p + (3 * w * (h-1-y));
+		double *dest = pImage_ + 3 * w * y;
+		for (int i = 0; i < 3 * w; i++) {
+			dest[i] = src[i];
+		}
+	}
+
+	return true;
+}
 
 
 inline static double RGB2Y(double r, double g, double b)
@@ -64,7 +87,7 @@ void renderer::edge_detection(const double *src, double *dest)const
 void renderer::gauss_blur_x(const double *src, double *dest) const
 {
 	const double sigma2_inv = -1.0 / (2.0 * 20.0 * 20.0);
-	const int KERNEL_SIZE = 50;
+	const int KERNEL_SIZE = 100;
 	double tbl[KERNEL_SIZE + 1] = { 1.0 };
 	double tbl_sum = 0.0;
 	for (int i = 1; i <= KERNEL_SIZE; i++) {
@@ -100,7 +123,7 @@ void renderer::gauss_blur_x(const double *src, double *dest) const
 void renderer::gauss_blur_y(const double *src, double *dest) const
 {
 	const double sigma2_inv = -1.0 / (2.0 * 20.0 * 20.0);
-	const int KERNEL_SIZE = 50;
+	const int KERNEL_SIZE = 100;
 	double tbl[KERNEL_SIZE + 1] = {1.0};
 	double tbl_sum = 0.0;
 	for (int i = 1; i <= KERNEL_SIZE; i++) {
@@ -259,7 +282,7 @@ void renderer::get_luminance(const double *src, double *dest) const
 #ifndef SHIPPING
 		dest[idx + 1] = dest[idx + 2] =
 #endif // !SHIPPING
-			dest[idx] = RGB2Y(src[idx], src[idx + 1], src[idx + 2]);
+			dest[idx] = log(RGB2Y(src[idx], src[idx + 1], src[idx + 2])+1.0);
 	}
 }
 
@@ -287,7 +310,7 @@ renderer::renderer(int w, int h)
 	HEIGHT = h;
 
 	// camera
-	Vec3 from(13, 3, 3);
+	Vec3 from(-13, 3, -3);
 	Vec3 lookat(0, 0.5, 0);
 	Vec3 up(0, 1, 0);
 	double fov = 20.0;
@@ -302,8 +325,8 @@ renderer::renderer(int w, int h)
 	Material *p = new Lambertian(Vec3(0.5, 0.5, 0.5));
 	scene_.Append(new Sphere(Vec3(0, -1000, 0), 1000, p));
 	scene_.Append(new Sphere(Vec3(0, 1, 0), 1.0, new Dielectric(1.5)));
-	scene_.Append(new Sphere(Vec3(-4, 1, 0), 1.0, new Lambertian(Vec3(0.4, 0.2, 0.1))));
-	scene_.Append(new Sphere(Vec3(4, 1, 0), 1.0, new Metal(Vec3(0.7, 0.6, 0.5), 0.0)));
+	scene_.Append(new Sphere(Vec3(+4, 1, 0), 1.0, new Lambertian(Vec3(0.4, 0.2, 0.1))));
+	scene_.Append(new Sphere(Vec3(-4, 1, 0), 1.0, new Metal(Vec3(0.7, 0.6, 0.5), 0.0)));
 }
 
 renderer::~renderer()
@@ -329,9 +352,15 @@ Vec3 renderer::raytrace(Ray r, int depth, my_rand &rnd)const
 	}
 	else {
 		Vec3 unit_direction = r.direction().normalize();
-		double t = 0.5*(unit_direction.y + 1.0);
-		return (1.0 - t)*Vec3(1.0, 1.0, 1.0) + t * Vec3(0.5, 0.7, 1.0);
+//		double t = 0.5*(unit_direction.y + 1.0);
+//		return (1.0 - t)*Vec3(1.0, 1.0, 1.0) + t * Vec3(0.5, 0.7, 1.0);
+		return ibl_.get(r.direction().normalize());
 	}
+}
+
+void renderer::setIBL(int width, int height, const float *image)
+{
+	ibl_.initialize(width, height, image);
 }
 
 void renderer::update(const double *src, double *dest, const double *normal_map)const
@@ -350,7 +379,8 @@ void renderer::update(const double *src, double *dest, const double *normal_map)
 			for (int x = 0; x < WIDTH; x++) {
 				const double *n = normal_map + index;
 
-				const double GAZE_SCALE = 7000.0;
+				const double GAZE_SCALE = 700.0;
+//				const double GAZE_SCALE = 7000.0;
 
 				double u = ((double)x + rnd.get() + GAZE_SCALE * n[0]) * INV_WIDTH;
 				double v = ((double)y + rnd.get() + GAZE_SCALE * n[1]) * INV_HEIGHT;

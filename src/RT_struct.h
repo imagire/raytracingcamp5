@@ -4,6 +4,18 @@
 #include <cmath>
 #include "my_rand.h"
 
+#ifndef PI
+#define PI 3.141592653589793826433
+#endif// !PI
+
+
+#ifndef SAFE_DELETE
+#define SAFE_DELETE(p) {if(p)delete(p);(p)=nullptr;}
+#endif // SAFE_DELETE
+
+#ifndef SAFE_DELETE_ARRAY
+#define SAFE_DELETE_ARRAY(p) {if(p)delete[](p);(p)=nullptr;}
+#endif // SAFE_DELETE_ARRAY
 
 struct Vec3 {
 	double x, y, z;
