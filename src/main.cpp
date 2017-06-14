@@ -15,8 +15,7 @@
 #include "../sdk/stb/stb_image.h"
 #include "../sdk/stb/stb_image_write.h"
 
-#include "sdk/hdrloader/hdrloader.h"
-
+#include "hdrloader.h"
 #include "renderer.h"
 
 

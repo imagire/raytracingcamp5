@@ -9,8 +9,8 @@ LIB=
 
 .SUFFIXES:.cpp .c .o .h
 
-SRC=$(shell ls -R *.cpp)
-HED=$(shell ls -R *.h)
+SRC=$(shell ls *.cpp)
+HED=$(shell ls *.h)
 OBJ=$(SRC:.cpp=.o)
 
 all: $(TARGET)
