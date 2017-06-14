@@ -31,7 +31,7 @@ private:
 	double dw_ = 0.0, dh_=0.0;
 	double *pImage_=nullptr;
 public:
-	IBL() {}
+	IBL() { w_ = 0; h_ = 0; dw_ = 0.0; dh_ = 0.0; pImage_ = nullptr; }
 	~IBL() { SAFE_DELETE_ARRAY(pImage_); }
 
 	bool initialize(int w, int h, const float *p);
