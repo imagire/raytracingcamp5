@@ -15,6 +15,8 @@
 #include "../sdk/stb/stb_image.h"
 #include "../sdk/stb/stb_image_write.h"
 
+#include "sdk/hdrloader/hdrloader.h"
+
 #include "renderer.h"
 
 
@@ -81,6 +83,9 @@ int main()
 	initFB(fb[2]);
 
 	renderer *pRenderer = new renderer(WIDTH, HEIGHT);
+
+	HDRLoaderResult result;
+	bool ret = HDRLoader::load("media/Tokyo_BigSight/Tokyo_BigSight_3k.hdr", result);
 
 	// 初期描画
 	pRenderer->update(fb[1 - current], fb[current], fb[2]);

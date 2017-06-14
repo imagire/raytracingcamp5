@@ -145,6 +145,7 @@
   <ItemGroup>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="renderer.cpp" />
+    <ClCompile Include="sdk\hdrloader\hdrloader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\sdk\stb\stb_image_write.h" />
@@ -152,6 +153,7 @@
     <ClInclude Include="my_rand.h" />
     <ClInclude Include="renderer.h" />
     <ClInclude Include="RT_struct.h" />
+    <ClInclude Include="sdk\hdrloader\hdrloader.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

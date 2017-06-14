@@ -12,7 +12,8 @@ script:
   - make depend
   - make
   - ls -lsaR
-  - cd bin
+  - cd ../bin
+  - mv ../src/bin/a.out ./
   - ./a.out
   - ls -lsaR
 after_success:
@@ -20,7 +21,8 @@ after_success:
 #  - echo $TRAVIS_BRANCH
   - test "$TRAVIS_BRANCH" != "master" && exit 1
   - test "$TRAVIS_PULL_REQUEST" = "true" && exit 1
-  - cp ../../static/* .
+  - cp ../static/* .
+  - rm -fr ./media
   - git config --global user.email "$email"
   - git config --global user.name "$username"
   - rm -rf .git
