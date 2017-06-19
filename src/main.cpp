@@ -31,6 +31,28 @@
 #define FINISH_TIME (4 * 60 + 33)
 #define FINISH_MARGIN 2
 
+// http://filmicworlds.com/blog/filmic-tonemapping-operators/
+const double A = 0.15;
+const double B = 0.50;
+const double C = 0.10;
+const double D = 0.20;
+const double E = 0.02;
+const double F = 0.30;
+const double W = 11.2;
+#define Uncharted2Tonemap(x) ((((x)*(A*(x) + C*B) + D*E) / ((x)*(A*(x) + B) + D*F)) - E / F)
+#define whiteScale (1.0 / Uncharted2Tonemap(W))
+
+inline unsigned char FilmicTonemapping(const double src)
+{
+	double v = src * 16;  // Hardcoded Exposure Adjustment
+
+	float ExposureBias = 2.0f;
+	double curr = Uncharted2Tonemap(ExposureBias * v);
+	double color = curr * whiteScale;
+	color = (1.0 < color) ? 1.0 : color;// clamp
+	return (unsigned char)((255.99999) * pow(color,1 / 2.2));
+}
+
 void save(const double *data, unsigned char *buf, const char *filename, int steps)
 {
 	const double coeff = 1.0 / (double)steps;
@@ -39,9 +61,10 @@ void save(const double *data, unsigned char *buf, const char *filename, int step
 	{
 		#pragma omp for
 		for (int i = 0; i < 3 * WIDTH * HEIGHT; i++) {
-//			double tmp = data[i] / (double)steps;// tone mapping
-			double tmp = 1.0 - exp(-data[i] * coeff);// tone mapping
-			buf[i] = (unsigned char)(pow(tmp, 1.0 / 2.2) * 255.999);// gamma correct
+//			double tmp = data[i] / (double)steps;// SDR tone mapping
+//			double tmp = 1.0 - exp(-data[i] * coeff);// tone mapping
+//			buf[i] = (unsigned char)(pow(tmp, 1.0 / 2.2) * 255.999);// gamma correct
+			buf[i] = FilmicTonemapping(data[i] * coeff);
 		}
 	}
 
