@@ -9,6 +9,7 @@
 // #include <vld.h>
 
 #include <iostream>
+#include <fstream>
 #include <thread>
 #include <omp.h>
 
@@ -40,13 +41,13 @@ const double E = 0.02;
 const double F = 0.30;
 const double W = 11.2;
 #define Uncharted2Tonemap(x) ((((x)*(A*(x) + C*B) + D*E) / ((x)*(A*(x) + B) + D*F)) - E / F)
-#define whiteScale (1.0 / Uncharted2Tonemap(W))
 
 inline unsigned char FilmicTonemapping(const double src)
 {
 	double v = src * 16;  // Hardcoded Exposure Adjustment
 
-	float ExposureBias = 2.0f;
+	const double ExposureBias = 2.0;
+	const double whiteScale = (1.0 / Uncharted2Tonemap(W));
 	double curr = Uncharted2Tonemap(ExposureBias * v);
 	double color = curr * whiteScale;
 	color = (1.0 < color) ? 1.0 : color;// clamp
@@ -181,6 +182,11 @@ int main()
 	delete[] fb[1];
 	delete[] fb[0];
 
+	// log 出力
+	std::ofstream f;
+	f.open("log.txt", std::ios::out);
+	f << "frame count:" << frame << "<br>" << std::endl;
+	
 	return 0;
 }
 
