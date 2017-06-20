@@ -1,5 +1,8 @@
+ul{
+  width:80%; 
+}
+
 img {
   max-width: 100%;
-  width: 90%;
   height: auto;
 }
