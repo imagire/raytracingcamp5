@@ -162,9 +162,10 @@ int main()
 		int c = (int)(t / OUTPUT_INTERVAL);
 		if (count < c || finished) {
 			// sprintf_s を使いたくなくて、古典的な手法
-			char filename[256] = { '0', '0', '.', 'p', 'n', 'g', '\0' };
-			filename[0] = '0' + (c / 10);
-			filename[1] = '0' + (c % 10);
+			c -= 1; // 000.pngからはじまる
+			char filename[256] = { '0', '0', '0', '.', 'p', 'n', 'g', '\0' };
+			filename[1] = '0' + (c / 10);
+			filename[2] = '0' + (c % 10);
 			save(fb[current], image, filename, frame);
 			count++;
 		}
