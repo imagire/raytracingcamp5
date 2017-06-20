@@ -14,6 +14,7 @@ script:
   - ls -lsaR
   - cd ../runtime
   - mv ../src/bin/a.out ./
+  - zip -r raytracingcamp.zip ./ #create zip archive
   - ./a.out
   - ls -lsaR
 after_success:
