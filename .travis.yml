@@ -23,6 +23,13 @@ after_success:
   - test "$TRAVIS_PULL_REQUEST" = "true" && exit 1
   - cp ../static/* .
   - rm -fr ./media
+#  output log
+  - echo 'var html = '\'\'';' > common.js
+  - echo 'html += '\''更新時刻:'\' >> common.js
+  - date >> common.js
+  - echo ';' >> common.js
+  - echo 'document.getElementById('\''include'\'').innerHTML = html;' >>  common.js
+# commit
   - git config --global user.email "$email"
   - git config --global user.name "$username"
   - rm -rf .git
