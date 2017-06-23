@@ -45,18 +45,20 @@ void save(unsigned char *buf, const char *filename)
 int main()
 {
 //	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_DELAY_FREE_MEM_DF | _CRTDBG_CHECK_ALWAYS_DF | _CRTDBG_LEAK_CHECK_DF);
-	bool ret;
 	time_t t0 = time(NULL);
 	time_t t_last = 0;
 	int count = 0;
 	int frame = 0;
+	bool ret;
+	FrameBuffer *fb[3];
+	renderer *pRenderer;
+	HDRLoaderResult ibl_data;
 
 	unsigned char *image = new unsigned char[3 * WIDTH * HEIGHT];
 	if (!image) goto image_failed;
 
 	// frame buffer の初期化
 	int current = 0;
-	FrameBuffer *fb[3];
 	fb[0] = new FrameBuffer(WIDTH, HEIGHT);// ダブルバッファ1
 	if (!fb[0])goto fb0_failed;
 	fb[1] = new FrameBuffer(WIDTH, HEIGHT);// ダブルバッファ2
@@ -64,10 +66,9 @@ int main()
 	fb[2] = new FrameBuffer(WIDTH, HEIGHT);// 法線マップ用
 	if (!fb[2])goto fb2_failed;
 
-	renderer *pRenderer = new renderer(WIDTH, HEIGHT);
+	pRenderer = new renderer(WIDTH, HEIGHT);
 	if (!pRenderer)goto renderer_failed;
 
-	HDRLoaderResult ibl_data;
 	ret = HDRLoader::load("media/Tokyo_BigSight/Tokyo_BigSight_3k.hdr", ibl_data);
 //	ret = HDRLoader::load("media/Ridgecrest_Road/Ridgecrest_Road_Env.hdr", ibl_data);
 
