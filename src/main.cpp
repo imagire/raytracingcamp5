@@ -45,13 +45,14 @@ void save(unsigned char *buf, const char *filename)
 int main()
 {
 //	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_DELAY_FREE_MEM_DF | _CRTDBG_CHECK_ALWAYS_DF | _CRTDBG_LEAK_CHECK_DF);
-
+	bool ret;
 	time_t t0 = time(NULL);
 	time_t t_last = 0;
 	int count = 0;
+	int frame = 0;
 
 	unsigned char *image = new unsigned char[3 * WIDTH * HEIGHT];
-	if (!image)goto image_failed;
+	if (!image) goto image_failed;
 
 	// frame buffer の初期化
 	int current = 0;
@@ -67,8 +68,8 @@ int main()
 	if (!pRenderer)goto renderer_failed;
 
 	HDRLoaderResult ibl_data;
-	bool ret = HDRLoader::load("media/Tokyo_BigSight/Tokyo_BigSight_3k.hdr", ibl_data);
-//	bool ret = HDRLoader::load("media/Ridgecrest_Road/Ridgecrest_Road_Env.hdr", ibl_data);
+	ret = HDRLoader::load("media/Tokyo_BigSight/Tokyo_BigSight_3k.hdr", ibl_data);
+//	ret = HDRLoader::load("media/Ridgecrest_Road/Ridgecrest_Road_Env.hdr", ibl_data);
 
 	pRenderer->setIBL(ibl_data.width, ibl_data.height, ibl_data.cols);
 	delete[] ibl_data.cols;// コピーされるので、実体は使われない
@@ -109,7 +110,7 @@ int main()
 	save(image, "normal.png");
 
 	// 再初期化
-	int frame = 0;
+	frame = 0;
 	fb[current]->clear();
 	current = 1 - current;
 
