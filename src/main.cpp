@@ -50,6 +50,7 @@ int main()
 	int count = 0;
 	int frame = 0;
 	bool ret;
+	int current;
 	FrameBuffer *fb[3];
 	renderer *pRenderer;
 	HDRLoaderResult ibl_data;
@@ -58,7 +59,7 @@ int main()
 	if (!image) goto image_failed;
 
 	// frame buffer の初期化
-	int current = 0;
+	current = 0;
 	fb[0] = new FrameBuffer(WIDTH, HEIGHT);// ダブルバッファ1
 	if (!fb[0])goto fb0_failed;
 	fb[1] = new FrameBuffer(WIDTH, HEIGHT);// ダブルバッファ2
