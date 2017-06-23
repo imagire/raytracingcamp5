@@ -29,16 +29,16 @@ class IBL {
 private:
 	int w_, h_;
 	double dw_, dh_;
-	double *pImage_;
+	FrameBuffer *pImage_;
 public:
 	IBL() { w_ = 0; h_ = 0; dw_ = 0.0; dh_ = 0.0; pImage_ = nullptr; }
 	~IBL() { SAFE_DELETE_ARRAY(pImage_); }
 
 	bool initialize(int w, int h, const float *p);
 
-	inline Vec3 get(double u, double v) const { double *p = pImage_ + 3 * (w_*(int)(v*dh_) + (int)(u*dw_)); return Vec3(p[0], p[1], p[2]); }
-//	inline Vec3 get(const Vec3 d) const { return get(0.5 * d.x + 0.5, 0.5*d.y + 0.5); }
-	inline Vec3 get(const Vec3 d) const { return get(atan2(d.x, d.z) / (2.0*PI) + 0.5, acos(-d.y) / PI); }// 上の式で読めるように変換したい…
+	inline Color get(double u, double v) const { return pImage_->get((int)(u*dw_), (int)(v*dh_)); }
+//	inline Color get(const Vec3 d) const { return get(0.5 * d.x + 0.5, 0.5*d.y + 0.5); }
+	inline Color get(const Vec3 d) const { return get(atan2(d.x, d.z) / (2.0*PI) + 0.5, acos(-d.y) / PI); }// 上の式で読めるように変換したい…
 };
 
 class renderer{
@@ -50,21 +50,21 @@ private:
 	HitableList scene_;
 	IBL ibl_;
 
-	Vec3 raytrace(Ray r, int depth, my_rand &rnd)const;
+	Color raytrace(Ray r, int depth, my_rand &rnd)const;
 public:
 	renderer(int w, int h);
 	~renderer();
 	
 	void setIBL(int width, int height, const float *image);
 
-	void update(const double *src, double *dest, const double *normal_map)const;// なるべく早く出ること
+	void update(const FrameBuffer *src, FrameBuffer *dest, const FrameBuffer *normal_map)const;// なるべく早く出ること
 	
-	void copy(const double *src, double *dest)const;
-	void median_filter(const double *src, double *dest) const;
-	void get_luminance(const double *src, double *dest) const;
-	void edge_detection(const double *src, double *dest) const;
-	void gauss_blur_x(const double *src, double *dest) const;
-	void gauss_blur_y(const double *src, double *dest) const;
-	void compute_normal(const double *src, double *dest) const;
+	static void copy(const FrameBuffer &src, FrameBuffer &dest);
+	static void median_filter(const FrameBuffer &src, FrameBuffer &dest);
+	static void get_luminance(const FrameBuffer &src, FrameBuffer &dest);
+	static void edge_detection(const FrameBuffer &src, FrameBuffer &dest);
+	static void gauss_blur_x(const FrameBuffer &src, FrameBuffer &dest);
+	static void gauss_blur_y(const FrameBuffer &src, FrameBuffer &dest);
+	static void compute_normal(const FrameBuffer &src, FrameBuffer &dest);
 };
 #endif // !RENDERER_H

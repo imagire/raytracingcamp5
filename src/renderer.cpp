@@ -19,16 +19,17 @@ bool IBL::initialize(int w, int h, const float *p)
 	dw_ = w;
 	dh_ = h;
 
-	pImage_ = new double[3 * w * h];
+	pImage_ = new FrameBuffer(w, h);
 	if (!pImage_) return false;
 
 #pragma omp for
 	for (int y = 0; y < h; y++) {
 		// 上下をひっくり返してコピー
 		const float *src = p + (3 * w * (h-1-y));
-		double *dest = pImage_ + 3 * w * y;
-		for (int i = 0; i < 3 * w; i++) {
-			dest[i] = src[i];
+		Color *dest = pImage_->ref(0, y);
+		for (int i = 0; i < w; i++) {
+			int idx = 3 * i;
+			dest[i].set(src[idx + 0], src[idx + 1], src[idx + 2] );
 		}
 	}
 
@@ -36,9 +37,9 @@ bool IBL::initialize(int w, int h, const float *p)
 }
 
 
-inline static double RGB2Y(double r, double g, double b)
+inline static double RGB2Y(Color c)
 {
-	return 0.299 * r + 0.587 * g + 0.114 * b;
+	return 0.299 * c.r + 0.587 * c.g + 0.114 * c.b;
 }
 
 inline static int clamp(int src, int v_min, int v_max)
@@ -47,44 +48,45 @@ inline static int clamp(int src, int v_min, int v_max)
 	return (v_max < d) ? v_max : d;
 }
 
-void renderer::edge_detection(const double *src, double *dest)const
+void renderer::edge_detection(const FrameBuffer &src, FrameBuffer &dest)
 {
+	int w = src.getWidth();
+	int h = src.getHeight();
+
 #pragma omp parallel
 	{
 #pragma omp for
-		for (int y = 0; y < HEIGHT; y++) {
-			int dest_idx = 3 * y * WIDTH;
+		for (int y = 0; y < h; y++) {
+			int dest_idx = y * w;
 			int y0 = (y - 1 < 0) ? 0 : (y - 1);
 			int y1 = y;
-			int y2 = (HEIGHT - 1 < y + 1) ? (HEIGHT - 1) : (y + 1);
-			for (int x = 0; x < WIDTH; x++) {
+			int y2 = (h - 1 < y + 1) ? (h - 1) : (y + 1);
+			for (int x = 0; x < w; x++) {
 				int x0 = (x - 1 < 0) ? 0 : (x - 1);
 				int x1 = x;
-				int x2 = (WIDTH - 1 < x + 1) ? (WIDTH - 1) : (x + 1);
+				int x2 = (w - 1 < x + 1) ? (w - 1) : (x + 1);
 
 				// Sobelフィルタ
 				double dx =
-					1.0*src[3 * (y0 * WIDTH + x2)] - 1.0*src[3 * (y0 * WIDTH + x0)] +
-					2.0*src[3 * (y1 * WIDTH + x2)] - 2.0*src[3 * (y1 * WIDTH + x0)] +
-					1.0*src[3 * (y2 * WIDTH + x2)] - 1.0*src[3 * (y2 * WIDTH + x0)];
+					1.0*src.get(y0 * w + x2).r - 1.0*src.get(y0 * w + x0).r +
+					2.0*src.get(y1 * w + x2).r - 2.0*src.get(y1 * w + x0).r +
+					1.0*src.get(y2 * w + x2).r - 1.0*src.get(y2 * w + x0).r;
 				double dy =
-					1.0*src[3 * (y2 * WIDTH + x0)] - 1.0*src[3 * (y0 * WIDTH + x0)] +
-					2.0*src[3 * (y2 * WIDTH + x1)] - 2.0*src[3 * (y0 * WIDTH + x1)] +
-					1.0*src[3 * (y2 * WIDTH + x2)] - 1.0*src[3 * (y0 * WIDTH + x2)];
+					1.0*src.get(y2 * w + x0).r - 1.0*src.get(y0 * w + x0).r +
+					2.0*src.get(y2 * w + x1).r - 2.0*src.get(y0 * w + x1).r +
+					1.0*src.get(y2 * w + x2).r - 1.0*src.get(y0 * w + x2).r;
 
 				dx = (dx < 0) ? -dx : dx;
 				dy = (dy < 0) ? -dy : dy;
 
-#ifndef SHIPPING
-				dest[dest_idx + 1] = dest[dest_idx + 2] =
-#endif // !SHIPPING
-					dest[dest_idx] = 0.125 * (dx + dy);
-				dest_idx += 3;
+				double v = 0.125 * (dx + dy);
+				dest.set(dest_idx, Color(v,v,v));
+				dest_idx++;
 			}
 		}
 	}
 }
-void renderer::gauss_blur_x(const double *src, double *dest) const
+void renderer::gauss_blur_x(const FrameBuffer &src, FrameBuffer &dest)
 {
 	const double sigma2_inv = -1.0 / (2.0 * 20.0 * 20.0);
 	const int KERNEL_SIZE = 100;
@@ -95,32 +97,32 @@ void renderer::gauss_blur_x(const double *src, double *dest) const
 		tbl_sum += 2.0 * tbl[i];
 	}
 
+	int w = src.getWidth();
+	int h = src.getHeight();
+
 #pragma omp parallel
 	{
 #pragma omp for
-		for (int y = 0; y < HEIGHT; y++) {
-			int dest_idx = 3 * y * WIDTH;
-			int src_idx = 3 * y * WIDTH;
-			for (int x = 0; x < WIDTH; x++) {
+		for (int y = 0; y < h; y++) {
+			int dest_idx = y * w;
+			int src_idx = y * w;
+			for (int x = 0; x < w; x++) {
 
 				double s = 0.0;
 				for (int i = -KERNEL_SIZE; i <= KERNEL_SIZE; i++) {
-					int ix = clamp(x + i, 0, WIDTH - 1);
-					double w = tbl[(i < 0) ? (-i) : i];
-					s += w * src[src_idx + 3 * ix];
+					int ix = clamp(x + i, 0, w - 1);
+					double weight = tbl[(i < 0) ? (-i) : i];
+					s += weight * src.get(src_idx + ix).r;
 				}
 
-#ifndef SHIPPING
-					dest[dest_idx + 1] = dest[dest_idx + 2] = 
-#endif // !SHIPPING
-					dest[dest_idx] = s / tbl_sum;
-				dest_idx += 3;
+				s /= tbl_sum;
+				dest.set(dest_idx++, Color(s, s, s));
 			}
 		}
 	}
 }
 
-void renderer::gauss_blur_y(const double *src, double *dest) const
+void renderer::gauss_blur_y(const FrameBuffer &src, FrameBuffer &dest)
 {
 	const double sigma2_inv = -1.0 / (2.0 * 20.0 * 20.0);
 	const int KERNEL_SIZE = 100;
@@ -131,93 +133,92 @@ void renderer::gauss_blur_y(const double *src, double *dest) const
 		tbl_sum += 2.0 * tbl[i];
 	}
 
+	int w = src.getWidth();
+	int h = src.getHeight();
+
 #pragma omp parallel
 	{
 #pragma omp for
-		for (int y = 0; y < HEIGHT; y++) {
-			int dest_idx = 3 * y * WIDTH;
-			int src_idx = 3 * y * WIDTH;
-			for (int x = 0; x < WIDTH; x++) {
-				int src_idx = 3 * x;
+		for (int y = 0; y < h; y++) {
+			int dest_idx = y * w;
+			int src_idx = y * w;
+			for (int x = 0; x < w; x++) {
 
 				double s = 0.0;
 				for (int i = -KERNEL_SIZE; i <= KERNEL_SIZE; i++) {
-					int iy = clamp(y + i, 0, HEIGHT - 1);
-					double w = tbl[(i < 0) ? (-i) : i];
-					s += w * src[src_idx + 3 * iy * WIDTH];
+					int iy = clamp(y + i, 0, h - 1);
+					double weight = tbl[(i < 0) ? (-i) : i];
+					s += weight * src.get(iy * w + x).r;
 				}
 
-#ifndef SHIPPING
-				dest[dest_idx + 1] = dest[dest_idx + 2] =
-#endif // !SHIPPING
-					dest[dest_idx] = s / tbl_sum;
-				dest_idx += 3;
-				src_idx += 3;
+				s /= tbl_sum;
+				dest.set(dest_idx++, Color(s, s, s));
+				src_idx++;
 			}
 		}
 	}
 }
 
-void renderer::compute_normal(const double *src, double *dest)const
+void renderer::compute_normal(const FrameBuffer &src, FrameBuffer &dest)
 {
-#pragma omp parallel
-	{
-#pragma omp for
-		for (int y = 0; y < HEIGHT; y++) {
-			int dest_idx = 3 * y * WIDTH;
-			int y0 = (y - 1 < 0) ? 0 : (y - 1);
-			int y1 = y;
-			int y2 = (HEIGHT - 1 < y + 1) ? (HEIGHT - 1) : (y + 1);
-			for (int x = 0; x < WIDTH; x++) {
-				int x0 = (x - 1 < 0) ? 0 : (x - 1);
-				int x1 = x;
-				int x2 = (WIDTH - 1 < x + 1) ? (WIDTH - 1) : (x + 1);
+	int w = src.getWidth();
+	int h = src.getHeight();
 
-				// Sobelフィルタ
-				double dx =
-					1.0*src[3 * (y0 * WIDTH + x2)] - 1.0*src[3 * (y0 * WIDTH + x0)] +
-					2.0*src[3 * (y1 * WIDTH + x2)] - 2.0*src[3 * (y1 * WIDTH + x0)] +
-					1.0*src[3 * (y2 * WIDTH + x2)] - 1.0*src[3 * (y2 * WIDTH + x0)];
-				double dy =
-					1.0*src[3 * (y2 * WIDTH + x0)] - 1.0*src[3 * (y0 * WIDTH + x0)] +
-					2.0*src[3 * (y2 * WIDTH + x1)] - 2.0*src[3 * (y0 * WIDTH + x1)] +
-					1.0*src[3 * (y2 * WIDTH + x2)] - 1.0*src[3 * (y0 * WIDTH + x2)];
+#pragma omp parallel for
+	for (int y = 0; y < h; y++) {
+		int dest_idx = src.getIdx(0, y);
+		int y0 = (y - 1 < 0) ? 0 : (y - 1);
+		int y1 = y;
+		int y2 = (h - 1 < y + 1) ? (h - 1) : (y + 1);
+		for (int x = 0; x < w; x++) {
+			int x0 = (x - 1 < 0) ? 0 : (x - 1);
+			int x1 = x;
+			int x2 = (w - 1 < x + 1) ? (w - 1) : (x + 1);
 
-				dest[dest_idx + 0] = 0.25 * dx;
-				dest[dest_idx + 1] = 0.25 * dy;
+			// Sobelフィルタ
+			double dx =
+				1.0*src.get(x2, y0).r - 1.0*src.get(x0, y0).r +
+				2.0*src.get(x2, y1).r - 2.0*src.get(x0, y1).r +
+				1.0*src.get(x2, y2).r - 1.0*src.get(x0, y2).r;
+			double dy =
+				1.0*src.get(x0, y2).r - 1.0*src.get(x0, y0).r +
+				2.0*src.get(x1, y2).r - 2.0*src.get(x1, y0).r +
+				1.0*src.get(x2, y2).r - 1.0*src.get(x2, y0).r;
+
 #ifndef SHIPPING
-				dest[dest_idx + 2] = sqrt(1.0 - dx * dx + dy * dy);
+			dest.set(dest_idx++, Color(0.25 * dx, 0.25 * dy, 0.5+0.5*sqrt(1.0 - dx * dx + dy * dy)));
+#else // SHIPPING
+			dest.set(dest_idx++, Color(0.25 * dx, 0.25 * dy, src.get(x, y).r));// いったん、zには明るさを入れる
 #endif // !SHIPPING
-				dest[dest_idx + 2] = src[3 * (y * WIDTH + x)];// いったん、zには明るさを入れる
-				dest_idx += 3;
-			}
 		}
 	}
 }
 
-void renderer::median_filter(const double *src, double *dest)const
+void renderer::median_filter(const FrameBuffer &src, FrameBuffer &dest)
 {
-	const double INV_WIDTH = 1.0 / (double)WIDTH;
-	const double INV_HEIGHT = 1.0 / (double)HEIGHT;
+	int w = src.getWidth();
+	int h = src.getHeight();
+	const double INV_WIDTH = 1.0 / (double)w;
+	const double INV_HEIGHT = 1.0 / (double)h;
 
 #pragma omp parallel
 	{
 #pragma omp for
-		for (int y = 0; y < HEIGHT; y++) {
+		for (int y = 0; y < h; y++) {
 			double lum[9];
 			double bak[9];
 			int id[9];
 			int j[9];
-			int dest_idx = 3 * y * WIDTH;
-			for (int x = 0; x < WIDTH; x++) {
+			int dest_idx = y * w;
+			for (int x = 0; x < w; x++) {
 
 				int idx = 0;
 				for (int iy = y-1; iy <= y+1; iy++) {
-					int dy = clamp(iy, 0, HEIGHT - 1);
+					int dy = clamp(iy, 0, h - 1);
 					for (int ix = x-1; ix <= x+1; ix++) {
-						int dx = clamp(ix, 0, WIDTH - 1);
-						int index = 3 * (dy * WIDTH + dx);
-						lum[idx] = RGB2Y(src[index + 0], src[index + 1], src[index + 2]);
+						int dx = clamp(ix, 0, w - 1);
+						int index = (dy * w + dx);
+						lum[idx] = RGB2Y(src.get(index));
 						bak[idx] = lum[idx];
 						id[idx] = index;
 						j[idx] = index;
@@ -256,33 +257,28 @@ void renderer::median_filter(const double *src, double *dest)const
 				}
 				MY_ASSERT(count0 <= 4 && count1 <= 4);
 
-
-				dest[dest_idx + 0] = src[index + 0];
-				dest[dest_idx + 1] = src[index + 1];
-				dest[dest_idx + 2] = src[index + 2];
-				dest_idx += 3;
+				dest.set(dest_idx++, src.get(index));
 			}
 		}
 	}
 }
 
-void renderer::copy(const double *src, double *dest)const
+void renderer::copy(const FrameBuffer &src, FrameBuffer &dest)
 {
+	int n = dest.getIdxNum();
 #pragma omp parallel for
-	for (int i = 0; i < 3 * WIDTH * HEIGHT; i++) {
-		dest[i] = src[i];
+	for (int i = 0; i < n; i++) {
+		dest.set(i, src.get(i));
 	}
 }
 
-void renderer::get_luminance(const double *src, double *dest) const
+void renderer::get_luminance(const FrameBuffer &src, FrameBuffer &dest)
 {
+	int n = dest.getIdxNum();
 #pragma omp parallel for
-	for (int i = 0; i < WIDTH * HEIGHT; i++) {
-		int idx = 3 * i;
-#ifndef SHIPPING
-		dest[idx + 1] = dest[idx + 2] =
-#endif // !SHIPPING
-			dest[idx] = log(RGB2Y(src[idx], src[idx + 1], src[idx + 2])+1.0);
+	for (int i = 0; i < n; i++) {
+		double l = log(RGB2Y(src.get(i)) + 1.0);
+		dest.set(i, Color(l, l, l));
 	}
 }
 
@@ -333,7 +329,7 @@ renderer::~renderer()
 {
 }
 
-Vec3 renderer::raytrace(Ray r, int depth, my_rand &rnd)const
+Color renderer::raytrace(Ray r, int depth, my_rand &rnd)const
 {
 	// for debugging
 //	return Vec3(0,0,0);
@@ -344,10 +340,10 @@ Vec3 renderer::raytrace(Ray r, int depth, my_rand &rnd)const
 		Ray scattered;
 		Vec3 attenuation;
 		if (depth < 50 && rec.mat_ptr->scatter(r, rec, attenuation, scattered, rnd)) {
-			return attenuation * raytrace(scattered, depth + 1, rnd);
+			return raytrace(scattered, depth + 1, rnd) * attenuation;
 		}
 		else {
-			return Vec3(0, 0, 0);
+			return Color();
 		}
 	}
 	else {
@@ -363,7 +359,7 @@ void renderer::setIBL(int width, int height, const float *image)
 	ibl_.initialize(width, height, image);
 }
 
-void renderer::update(const double *src, double *dest, const double *normal_map)const
+void renderer::update(const FrameBuffer *src, FrameBuffer *dest, const FrameBuffer *normal_map)const
 {
 	const double INV_WIDTH = 1.0 / (double)WIDTH;
 	const double INV_HEIGHT = 1.0 / (double)HEIGHT;
@@ -375,25 +371,22 @@ void renderer::update(const double *src, double *dest, const double *normal_map)
 		my_rand rnd(start);
 		#pragma omp for
 		for (int y = 0; y < HEIGHT; y++) {
-			int index = 3 * y * WIDTH;
+			int index = normal_map->getIdx(0, y);
 			for (int x = 0; x < WIDTH; x++) {
-				const double *n = normal_map + index;
+				const Color n = normal_map->get(index);
 
 				const double GAZE_SCALE = 700.0;
 //				const double GAZE_SCALE = 7000.0;
 
-				double u = ((double)x + rnd.get() + GAZE_SCALE * n[0]) * INV_WIDTH;
-				double v = ((double)y + rnd.get() + GAZE_SCALE * n[1]) * INV_HEIGHT;
+				double u = ((double)x + rnd.get() + GAZE_SCALE * n.r) * INV_WIDTH;
+				double v = ((double)y + rnd.get() + GAZE_SCALE * n.g) * INV_HEIGHT;
 
 				Ray r = cam_.get_ray(u, 1.0 - v, rnd);// 画像的に上下逆だったので、vを反転する
 //				Ray r = cam_.get_ray(u, 1.0 - v, rnd, Vec3(-10.0 * n[0], 10.0 * n[1], n[2]));// 画像的に上下逆だったので、vを反転する
-				Vec3 color = raytrace(r, 0, rnd);
+				Color color = raytrace(r, 0, rnd);
 
-				dest[index + 0] = src[index + 0] + color.x;
-				dest[index + 1] = src[index + 1] + color.y;
-				dest[index + 2] = src[index + 2] + color.z;
-
-				index += 3;
+				dest->set(index, src->get(index) + color);
+				index++;
 			}
 		}
 	}

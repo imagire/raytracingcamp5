@@ -32,57 +32,14 @@
 #define FINISH_TIME (4 * 60 + 33)
 #define FINISH_MARGIN 2
 
-// http://filmicworlds.com/blog/filmic-tonemapping-operators/
-const double A = 0.15;
-const double B = 0.50;
-const double C = 0.10;
-const double D = 0.20;
-const double E = 0.02;
-const double F = 0.30;
-const double W = 11.2;
-#define Uncharted2Tonemap(x) ((((x)*(A*(x) + C*B) + D*E) / ((x)*(A*(x) + B) + D*F)) - E / F)
 
-inline unsigned char FilmicTonemapping(const double src)
+void save(unsigned char *buf, const char *filename)
 {
-	double v = src * 16;  // Hardcoded Exposure Adjustment
-
-	const double ExposureBias = 2.0;
-	const double whiteScale = (1.0 / Uncharted2Tonemap(W));
-	double curr = Uncharted2Tonemap(ExposureBias * v);
-	double color = curr * whiteScale;
-	color = (1.0 < color) ? 1.0 : color;// clamp
-	return (unsigned char)((255.99999) * pow(color,1 / 2.2));
-}
-
-void save(const double *data, unsigned char *buf, const char *filename, int steps)
-{
-	const double coeff = 1.0 / (double)steps;
-	
-	#pragma omp parallel
-	{
-		#pragma omp for
-		for (int i = 0; i < 3 * WIDTH * HEIGHT; i++) {
-//			double tmp = data[i] / (double)steps;// SDR tone mapping
-//			double tmp = 1.0 - exp(-data[i] * coeff);// tone mapping
-//			buf[i] = (unsigned char)(pow(tmp, 1.0 / 2.2) * 255.999);// gamma correct
-			buf[i] = FilmicTonemapping(data[i] * coeff);
-		}
-	}
-
-	// save
 	int w = WIDTH;
 	int h = HEIGHT;
 	int comp = STBI_rgb; // RGB
 	int stride_in_bytes = 3 * w;
 	int result = stbi_write_png(filename, w, h, comp, buf, stride_in_bytes);
-}
-
-static void initFB(double *fb)
-{
-	#pragma omp parallel for
-	for (int i = 0; i < 3 * WIDTH * HEIGHT; i++) {
-		fb[i] = 0.0;
-	}
 }
 
 int main()
@@ -94,18 +51,20 @@ int main()
 	int count = 0;
 
 	unsigned char *image = new unsigned char[3 * WIDTH * HEIGHT];
+	if (!image)goto image_failed;
 
 	// frame buffer の初期化
 	int current = 0;
-	double *fb[3];
-	fb[0] = new double[3 * WIDTH * HEIGHT];// ダブルバッファ1
-	fb[1] = new double[3 * WIDTH * HEIGHT];// ダブルバッファ2
-	fb[2] = new double[3 * WIDTH * HEIGHT];// 法線マップ用
-	initFB(fb[0]);
-	initFB(fb[1]);
-	initFB(fb[2]);
+	FrameBuffer *fb[3];
+	fb[0] = new FrameBuffer(WIDTH, HEIGHT);// ダブルバッファ1
+	if (!fb[0])goto fb0_failed;
+	fb[1] = new FrameBuffer(WIDTH, HEIGHT);// ダブルバッファ2
+	if (!fb[1])goto fb1_failed;
+	fb[2] = new FrameBuffer(WIDTH, HEIGHT);// 法線マップ用
+	if (!fb[2])goto fb2_failed;
 
 	renderer *pRenderer = new renderer(WIDTH, HEIGHT);
+	if (!pRenderer)goto renderer_failed;
 
 	HDRLoaderResult ibl_data;
 	bool ret = HDRLoader::load("media/Tokyo_BigSight/Tokyo_BigSight_3k.hdr", ibl_data);
@@ -116,36 +75,42 @@ int main()
 
 	// 初期描画
 	pRenderer->update(fb[1 - current], fb[current], fb[2]);
-	save(fb[current], image, "1st_render.png", 1);
+	fb[current]->resolve(image);
+	save(image, "1st_render.png");
 	current = 1 - current;
 
 	// メディアンフィルタでフィルタリング
-	pRenderer->median_filter(fb[1 - current], fb[current]);
-	save(fb[current], image, "median.png", 1);
+	pRenderer->median_filter(*fb[1 - current], *fb[current]);
+	fb[current]->resolve(image);
+	save(image, "median.png");
 	current = 1 - current;
 
 	// 輝度抽出検出
-	pRenderer->get_luminance(fb[1 - current], fb[2]);
-	save(fb[2], image, "luminance.png", 1);
+	pRenderer->get_luminance(*fb[1 - current], *fb[2]);
+	fb[2]->resolve(image);
+	save(image, "luminance.png");
 	current = 1 - current;
 
 	// エッジ検出
-	pRenderer->edge_detection(fb[2], fb[1 - current]);
-	save(fb[1 - current], image, "edge.png", 1);
+	pRenderer->edge_detection(*fb[2], *fb[1 - current]);
+	fb[1-current]->resolve(image);
+	save(image, "edge.png");
 	current = 1 - current;
 
 	// エッジのガウスブラー
-	pRenderer->gauss_blur_x(fb[current],fb[2]);
-	pRenderer->gauss_blur_y(fb[2],fb[current]);
-	save(fb[current], image, "edge_blurred.png", 1);
+	pRenderer->gauss_blur_x(*fb[current], *fb[2]);
+	pRenderer->gauss_blur_y(*fb[2], *fb[current]);
+	fb[current]->resolve(image);
+	save(image, "edge_blurred.png");
 
 	// 法線方向の検出
-	pRenderer->compute_normal(fb[current], fb[2]);
-	save(fb[2], image, "normal.png", 1);
+	pRenderer->compute_normal(*fb[current], *fb[2]);
+	fb[2]->resolve(image);
+	save(image, "normal.png");
 
 	// 再初期化
 	int frame = 0;
-	initFB(fb[current]);
+	fb[current]->clear();
 	current = 1 - current;
 
 	do
@@ -166,7 +131,8 @@ int main()
 			char filename[256] = { '0', '0', '0', '.', 'p', 'n', 'g', '\0' };
 			filename[1] = '0' + (c / 10);
 			filename[2] = '0' + (c % 10);
-			save(fb[current], image, filename, frame);
+			fb[current]->resolve(image, 1.0 / (double)frame);
+			save(image, filename);
 			count++;
 		}
 
@@ -178,10 +144,15 @@ int main()
 	}while (true);
 
 	delete pRenderer;
-	delete[] image;
+renderer_failed:
 	delete[] fb[2];
+fb2_failed:
 	delete[] fb[1];
+fb1_failed:
 	delete[] fb[0];
+fb0_failed:
+	delete[] image;
+image_failed:
 
 	// log 出力
 	std::ofstream f;
