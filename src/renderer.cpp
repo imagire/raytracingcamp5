@@ -209,7 +209,7 @@ void renderer::median_filter(const RenderTarget<Color> &src, RenderTarget<Color>
 					for (int ix = x-1; ix <= x+1; ix++) {
 						int dx = clamp(ix, 0, w - 1);
 						int index = (dy * w + dx);
-						lum[idx] = src.get(index).getIntensity();
+						lum[idx] = src.get(index).getLuminance();
 						bak[idx] = lum[idx];
 						id[idx] = index;
 						j[idx] = index;
@@ -268,7 +268,7 @@ void renderer::get_luminance(const RenderTarget<Color> &src, RenderTarget<double
 	int n = dest.getIdxNum();
 #pragma omp parallel for
 	for (int i = 0; i < n; i++) {
-		double l = log(src.get(i).getIntensity() + 1.0);
+		double l = log(src.get(i).getLuminance() + 1.0);
 		dest.set(i, l);
 	}
 }

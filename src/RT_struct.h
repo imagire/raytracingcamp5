@@ -101,12 +101,7 @@ public:
 	inline const Color operator-(double v) const { return Color(r - v, g - v, b - v); }
 	inline const Color operator*(double v) const { return Color(r * v, g * v, b * v); }
 
-	inline double getIntensity()const { return 0.299 * r + 0.587 * g + 0.114 * b; }
-	inline double getRaw(int idx)const { return idx == 0 ? r : (idx == 1 ? g : b); }
-	// 取りたいが法線マップ用
-	inline double getR(int idx)const { return r; }
-	inline double getG(int idx)const { return g; }
-	inline double getB(int idx)const { return b; }
+	inline double getLuminance()const { return 0.299 * r + 0.587 * g + 0.114 * b; }
 };
 
 template<typename T> inline T Uncharted2Tonemap(const T &x) {
