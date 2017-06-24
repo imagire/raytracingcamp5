@@ -51,11 +51,14 @@ int main()
 	int frame = 0;
 	bool ret;
 	int current;
+	RenderTarget<ByteColor> *image;
 	RenderTarget<Color> *fb[2];
+	RenderTarget<Color> *RT_normal;
+	RenderTarget<double> *RT_Lum[2];
 	renderer *pRenderer;
 	HDRLoaderResult ibl_data;
 
-	RenderTarget<ByteColor> *image = new RenderTarget<ByteColor>(WIDTH, HEIGHT); if (!image) goto image_failed;
+	image = new RenderTarget<ByteColor>(WIDTH, HEIGHT); if (!image) goto image_failed;
 
 	// frame buffer の初期化
 	current = 0;
@@ -63,11 +66,10 @@ int main()
 	fb[1] = new RenderTarget<Color>(WIDTH, HEIGHT);	if (!fb[1])goto fb1_failed;
 
 
-	RenderTarget<double> *RT_Lum[2];
 	RT_Lum[0] = new RenderTarget<double>(WIDTH, HEIGHT); if (!RT_Lum[0])goto rtl0_failed;
 	RT_Lum[1] = new RenderTarget<double>(WIDTH, HEIGHT); if (!RT_Lum[1])goto rtl1_failed;
 
-	RenderTarget<Color> *RT_normal = new RenderTarget<Color>(WIDTH, HEIGHT); if (!RT_normal)goto normal_map_failed;
+	RT_normal = new RenderTarget<Color>(WIDTH, HEIGHT); if (!RT_normal)goto normal_map_failed;
 
 	pRenderer = new renderer(WIDTH, HEIGHT); if (!pRenderer)goto renderer_failed;
 
