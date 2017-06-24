@@ -161,7 +161,7 @@ public:
 	}
 
 	static inline void set_zero(double &v) { v = 0; }
-	static inline void set_zero(Color &v) { v.set_zero() }
+	static inline void set_zero(Color &v) { v.set_zero(); }
 	static inline void set_zero(ByteColor &v) { v = ByteColor(0, 0, 0); }
 
 	void clear()
