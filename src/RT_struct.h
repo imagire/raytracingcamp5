@@ -19,29 +19,36 @@
 
 struct Vec3 {
 	double x, y, z;
-	Vec3(const double x = 0, const double y = 0, const double z = 0) : x(x), y(y), z(z) {}
-	inline Vec3 operator+(const Vec3 &b) const {return Vec3(x + b.x, y + b.y, z + b.z);}
-	inline Vec3 operator-(const Vec3 &b) const {return Vec3(x - b.x, y - b.y, z - b.z);}
-	inline Vec3 operator*(const Vec3 &b) const { return Vec3(x * b.x, y * b.y, z * b.z); }
-	inline Vec3 operator*(const double b) const {return Vec3(x * b, y * b, z * b);}
-	 Vec3 operator/(const Vec3 &b) const { return Vec3(x / b.x, y / b.y, z / b.z); }
-	inline Vec3 operator/(const double b) const {return Vec3(x / b, y / b, z / b);}
-	inline Vec3 operator-() const { return Vec3(-x, -y, -z); }
+	Vec3(double x = 0, double y = 0, double z = 0) : x(x), y(y), z(z) {}
+
+	inline Vec3 &operator=(const Vec3 &v) { x = v.x; y = v.y; z = v.z; return *this; }
+	inline Vec3 &operator+=(const Vec3 &v) { x += v.x; y += v.y; z += v.z; }
+	inline Vec3 &operator-=(const Vec3 &v) { x -= v.x; y -= v.y; z -= v.z; }
+	inline Vec3 &operator*=(const Vec3 &v) { x *= v.x; y *= v.y; z *= v.z; }
+	inline Vec3 &operator/=(const Vec3 &v) { x /= v.x; y /= v.y; z /= v.z; }
+
+	inline const Vec3 operator+(const Vec3 &b) const {return Vec3(x + b.x, y + b.y, z + b.z);}
+	inline const Vec3 operator-(const Vec3 &b) const {return Vec3(x - b.x, y - b.y, z - b.z);}
+	inline const Vec3 operator*(const Vec3 &b) const { return Vec3(x * b.x, y * b.y, z * b.z); }
+	inline const Vec3 operator*(const double b) const {return Vec3(x * b, y * b, z * b);}
+	inline const Vec3 operator/(const Vec3 &b) const { return Vec3(x / b.x, y / b.y, z / b.z); }
+	inline const Vec3 operator/(const double b) const {return Vec3(x / b, y / b, z / b);}
+	inline const Vec3 operator-() const { return Vec3(-x, -y, -z); }
 	inline const double length_sq() const { return x * x + y * y + z * z; }
 	inline const double length() const { return sqrt(length_sq()); }
-	inline Vec3 normalize() const { return *this / length(); }
-	Vec3 reflect(const Vec3& n) const;
+	inline const Vec3 normalize() const { return *this / length(); }
+	const Vec3 reflect(const Vec3& n) const;
 	bool refract(const Vec3& n, double ni_over_nt, Vec3& refracted) const;
 
 	static Vec3 random_in_unit_disc(my_rand &rnd);
 	static Vec3 random_in_unit_sphere(my_rand &rnd);
 };
-inline Vec3 operator*(double f, const Vec3 &v) { return v * f; }
-inline Vec3 normalize(const Vec3 &v) {return v * (1.0 / v.length());}
+inline const Vec3 operator*(double f, const Vec3 &v) { return v * f; }
+inline const Vec3 normalize(const Vec3 &v) {return v * (1.0 / v.length());}
 inline const double dot(const Vec3 &v1, const Vec3 &v2) { return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;}
 inline const Vec3 cross(const Vec3 &v1, const Vec3 &v2) { return Vec3(v1.y * v2.z - v1.z * v2.y, v1.z * v2.x - v1.x * v2.z, v1.x * v2.y - v1.y * v2.x); }
 
-inline Vec3 Vec3::reflect(const Vec3& n) const { return *this - n * 2 * dot(*this, n); }
+inline const Vec3 Vec3::reflect(const Vec3& n) const { return *this - n * 2 * dot(*this, n); }
 inline bool Vec3::refract(const Vec3& n, double ni_over_nt, Vec3& refracted) const {
 	Vec3 uv = this->normalize();
 	double dt = dot(uv, n);
@@ -58,11 +65,20 @@ inline bool Vec3::refract(const Vec3& n, double ni_over_nt, Vec3& refracted) con
 #define min(a,b) (((a)<(b))?(a):(b))
 #endif // !min
 
+struct ByteColor {
+private:
+	unsigned char r, g, b;
+public:
+	ByteColor(unsigned char r0 = 0, unsigned char g0 = 0, unsigned char b0 = 0) { r = r0; g = g0; b = b0; }
+};
+
 struct Color {
+private:
 	double r, g, b;
+public:
 	Color(double r0 = 0.0, double g0 = 0.0, double b0 = 0.0) { r = r0; g = g0; b = b0; }
 
-	void getRGB(unsigned char *dst, double scale);
+	ByteColor getRGB(double scale);
 	void set_zero() { r = g = b = 0.0; }
 	void set(const Color c) { r = c.r; g = c.g;b = c.b;}
 	void set(double r0, double g0, double b0) { r = r0; g = g0; b = b0;}
@@ -80,6 +96,9 @@ struct Color {
 	inline const Color operator+(double v) const { return Color(r + v, g + v, b + v); }
 	inline const Color operator-(double v) const { return Color(r - v, g - v, b - v); }
 	inline const Color operator*(double v) const { return Color(r * v, g * v, b * v); }
+
+	inline double getIntensity()const { return 0.299 * r + 0.587 * g + 0.114 * b; }
+	inline double getRaw(int idx)const { return idx ==0 ? r : (idx == 1 ? g : b); }
 };
 
 template<typename T> inline T Uncharted2Tonemap(const T &x) {
@@ -87,7 +106,7 @@ template<typename T> inline T Uncharted2Tonemap(const T &x) {
 	return ((((x)*((x)*A+C*B) + D*E) / ((x)*((x)*A+B) + D*F)) - E / F);
 }
 
-inline void Color::getRGB(unsigned char *dst, double scale) {
+inline ByteColor Color::getRGB(double scale) {
 	// FilmicTonemapping
 	// http://filmicworlds.com/blog/filmic-tonemapping-operators/
 	Color v = (*this) * 16 * scale;  // Hardcoded Exposure Adjustment
@@ -96,10 +115,82 @@ inline void Color::getRGB(unsigned char *dst, double scale) {
 	const double W = 11.2;
 	const double whiteScale = 1.0 / Uncharted2Tonemap<double>(W);
 	Color color = curr * whiteScale;
-	dst[0] = (unsigned char)((255.99999) * pow(min(color.r, 1.0), 1 / 2.2));
-	dst[1] = (unsigned char)((255.99999) * pow(min(color.g, 1.0), 1 / 2.2));
-	dst[2] = (unsigned char)((255.99999) * pow(min(color.b, 1.0), 1 / 2.2));
+	return ByteColor(
+		(unsigned char)((255.99999) * pow(min(color.r, 1.0), 1 / 2.2)),
+		(unsigned char)((255.99999) * pow(min(color.g, 1.0), 1 / 2.2)),
+		(unsigned char)((255.99999) * pow(min(color.b, 1.0), 1 / 2.2)));
 }
+
+#if 0
+class FrameBufferRGB {
+	int w_, h_;
+	int num_;// w_*h_
+	ByteColor *a_buf;
+public:
+	FrameBufferRGB(int width, int height) : w_(width), h_(height) { num_ = width*height; a_buf = new ByteColor[num_]; }
+	~FrameBufferRGB() { SAFE_DELETE_ARRAY(a_buf); }
+
+	inline int getWidth() const { return w_; }
+	inline int getHeight() const { return h_; }
+
+	inline ByteColor get(int idx) const { return a_buf[idx]; }
+	inline ByteColor *ref(int idx) { return a_buf + idx; }
+	inline void set(int idx, ByteColor c) { a_buf[idx] = c; }
+};
+#endif
+
+template<typename T> class FB {
+	int w_, h_;
+	int num_;// w_*h_
+	T *a_buf;
+
+public:
+	FB(int width, int height) : w_(width), h_(height) { num_ = width*height; a_buf = new T[num_]; }
+	~FB() { SAFE_DELETE_ARRAY(a_buf); }
+
+	inline int getWidth() const { return w_; }
+	inline int getHeight() const { return h_; }
+	inline int getIdxNum() const { return num_; }
+	inline int getIdx(int x, int y) const { return y * w_ + x; }
+	inline T *ref(int idx) { return a_buf + idx; }
+	inline T *ref(int x, int y) { return a_buf + getIdx(x, y); }
+	inline T get(int idx) const { return a_buf[idx]; }
+	inline T get(int x, int y) const { return a_buf[y * w_ + x]; }
+	inline void set(int idx, T c) { a_buf[idx] = c; }
+	inline const T *ref(int idx) const { return a_buf + idx; }
+
+	static inline ByteColor getRGB(double &v, double scale) { double d = v * scale; d = (1.0 < d) ? 1.0 : d; unsigned char c = (unsigned char)(255.9999999*d); ByteColor(c, c, c); }
+	static inline ByteColor getRGB(Color &v, double scale) { v.getRGB(scale) }
+	static inline ByteColor getRGB(ByteColor &v, double scale) {
+		double r = scale*(double)v.r(); double g = scale*(double)v.g(); double b = scale*(double)v.b();
+		r = (r < 255.9) ? r : 255.9; g = (g < 255.9) ? g : 255.9; b = (b < 255.9) ? b : 255.9;
+		v = ByteColor((unsigned char)r, (unsigned char)g, (unsigned char)b);
+	}
+
+	void resolve(FB<ByteColor> *dst, double scale = 1.0)
+	{
+#pragma omp parallel for
+		for (int i = 0; i < num_; i++) {
+			//			double tmp = data[i] / (double)steps;// SDR tone mapping
+			//			double tmp = 1.0 - exp(-data[i] * coeff);// tone mapping
+			//			buf[i] = (unsigned char)(pow(tmp, 1.0 / 2.2) * 255.999);// gamma correct
+			dst->set(i, getRGB(a_buf[i]));
+		}
+	}
+
+	static inline void set_zero(double &v) { v = 0; }
+	static inline void set_zero(Color &v) { v.set_zero() }
+	static inline void set_zero(ByteColor &v) { v = ByteColor(0, 0, 0); }
+
+	void clear()
+	{
+#pragma omp parallel for
+		for (int i = 0; i < num_; i++) {
+			set_zeto(a_buf[i]);
+		}
+	}
+};
+
 
 class FrameBuffer {
 	int w_, h_;
@@ -120,14 +211,14 @@ public:
 	inline void set(int idx, Color c) { a_buf[idx] = c; }
 	inline const Color *ref(int idx) const { return a_buf + idx; }
 
-	void resolve(unsigned char *dst, double scale = 1.0)
+	void resolve(FB<ByteColor> *dst, double scale = 1.0)
 	{
 #pragma omp parallel for
 		for (int i = 0; i < num_; i++) {
 //			double tmp = data[i] / (double)steps;// SDR tone mapping
 //			double tmp = 1.0 - exp(-data[i] * coeff);// tone mapping
 //			buf[i] = (unsigned char)(pow(tmp, 1.0 / 2.2) * 255.999);// gamma correct
-			a_buf[i].getRGB(dst + 3 * i, scale);
+			dst->set(i, a_buf[i].getRGB(scale));
 		}
 	}
 	
@@ -139,6 +230,7 @@ public:
 		}
 	}
 };
+
 
 inline Vec3 Vec3::random_in_unit_disc(my_rand &rnd)
 {

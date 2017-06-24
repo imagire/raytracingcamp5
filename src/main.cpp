@@ -33,13 +33,13 @@
 #define FINISH_MARGIN 2
 
 
-void save(unsigned char *buf, const char *filename)
+void save(FB<ByteColor> *src, const char *filename)
 {
-	int w = WIDTH;
-	int h = HEIGHT;
+	int w = src->getWidth();
+	int h = src->getHeight();
 	int comp = STBI_rgb; // RGB
 	int stride_in_bytes = 3 * w;
-	int result = stbi_write_png(filename, w, h, comp, buf, stride_in_bytes);
+	int result = stbi_write_png(filename, w, h, comp, src->ref(0), stride_in_bytes);
 }
 
 int main()
@@ -55,7 +55,8 @@ int main()
 	renderer *pRenderer;
 	HDRLoaderResult ibl_data;
 
-	unsigned char *image = new unsigned char[3 * WIDTH * HEIGHT];
+	FB<ByteColor> *image = new FB<ByteColor>(WIDTH, HEIGHT);
+//	FrameBufferRGB *image = new FrameBufferRGB(WIDTH, HEIGHT);
 	if (!image) goto image_failed;
 
 	// frame buffer の初期化
@@ -154,7 +155,7 @@ fb2_failed:
 fb1_failed:
 	SAFE_DELETE(fb[0]);
 fb0_failed:
-	SAFE_DELETE_ARRAY(image);
+	SAFE_DELETE(image);
 image_failed:
 
 	// log 出力

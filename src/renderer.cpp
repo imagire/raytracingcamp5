@@ -37,11 +37,6 @@ bool IBL::initialize(int w, int h, const float *p)
 }
 
 
-inline static double RGB2Y(Color c)
-{
-	return 0.299 * c.r + 0.587 * c.g + 0.114 * c.b;
-}
-
 inline static int clamp(int src, int v_min, int v_max)
 {
 	int d = (src < v_min) ? v_min : src;
@@ -68,13 +63,13 @@ void renderer::edge_detection(const FrameBuffer &src, FrameBuffer &dest)
 
 				// Sobelフィルタ
 				double dx =
-					1.0*src.get(y0 * w + x2).r - 1.0*src.get(y0 * w + x0).r +
-					2.0*src.get(y1 * w + x2).r - 2.0*src.get(y1 * w + x0).r +
-					1.0*src.get(y2 * w + x2).r - 1.0*src.get(y2 * w + x0).r;
+					1.0*src.get(y0 * w + x2).getRaw(0) - 1.0*src.get(y0 * w + x0).getRaw(0) +
+					2.0*src.get(y1 * w + x2).getRaw(0) - 2.0*src.get(y1 * w + x0).getRaw(0) +
+					1.0*src.get(y2 * w + x2).getRaw(0) - 1.0*src.get(y2 * w + x0).getRaw(0);
 				double dy =
-					1.0*src.get(y2 * w + x0).r - 1.0*src.get(y0 * w + x0).r +
-					2.0*src.get(y2 * w + x1).r - 2.0*src.get(y0 * w + x1).r +
-					1.0*src.get(y2 * w + x2).r - 1.0*src.get(y0 * w + x2).r;
+					1.0*src.get(y2 * w + x0).getRaw(0) - 1.0*src.get(y0 * w + x0).getRaw(0) +
+					2.0*src.get(y2 * w + x1).getRaw(0) - 2.0*src.get(y0 * w + x1).getRaw(0) +
+					1.0*src.get(y2 * w + x2).getRaw(0) - 1.0*src.get(y0 * w + x2).getRaw(0);
 
 				dx = (dx < 0) ? -dx : dx;
 				dy = (dy < 0) ? -dy : dy;
@@ -112,7 +107,7 @@ void renderer::gauss_blur_x(const FrameBuffer &src, FrameBuffer &dest)
 				for (int i = -KERNEL_SIZE; i <= KERNEL_SIZE; i++) {
 					int ix = clamp(x + i, 0, w - 1);
 					double weight = tbl[(i < 0) ? (-i) : i];
-					s += weight * src.get(src_idx + ix).r;
+					s += weight * src.get(src_idx + ix).getRaw(0);
 				}
 
 				s /= tbl_sum;
@@ -148,7 +143,7 @@ void renderer::gauss_blur_y(const FrameBuffer &src, FrameBuffer &dest)
 				for (int i = -KERNEL_SIZE; i <= KERNEL_SIZE; i++) {
 					int iy = clamp(y + i, 0, h - 1);
 					double weight = tbl[(i < 0) ? (-i) : i];
-					s += weight * src.get(iy * w + x).r;
+					s += weight * src.get(iy * w + x).getRaw(0);
 				}
 
 				s /= tbl_sum;
@@ -177,13 +172,13 @@ void renderer::compute_normal(const FrameBuffer &src, FrameBuffer &dest)
 
 			// Sobelフィルタ
 			double dx =
-				1.0*src.get(x2, y0).r - 1.0*src.get(x0, y0).r +
-				2.0*src.get(x2, y1).r - 2.0*src.get(x0, y1).r +
-				1.0*src.get(x2, y2).r - 1.0*src.get(x0, y2).r;
+				1.0*src.get(x2, y0).getRaw(0) - 1.0*src.get(x0, y0).getRaw(0) +
+				2.0*src.get(x2, y1).getRaw(0) - 2.0*src.get(x0, y1).getRaw(0) +
+				1.0*src.get(x2, y2).getRaw(0) - 1.0*src.get(x0, y2).getRaw(0);
 			double dy =
-				1.0*src.get(x0, y2).r - 1.0*src.get(x0, y0).r +
-				2.0*src.get(x1, y2).r - 2.0*src.get(x1, y0).r +
-				1.0*src.get(x2, y2).r - 1.0*src.get(x2, y0).r;
+				1.0*src.get(x0, y2).getRaw(0) - 1.0*src.get(x0, y0).getRaw(0) +
+				2.0*src.get(x1, y2).getRaw(0) - 2.0*src.get(x1, y0).getRaw(0) +
+				1.0*src.get(x2, y2).getRaw(0) - 1.0*src.get(x2, y0).getRaw(0);
 
 #ifndef SHIPPING
 			dest.set(dest_idx++, Color(0.25 * dx, 0.25 * dy, 0.5+0.5*sqrt(1.0 - dx * dx + dy * dy)));
@@ -218,7 +213,7 @@ void renderer::median_filter(const FrameBuffer &src, FrameBuffer &dest)
 					for (int ix = x-1; ix <= x+1; ix++) {
 						int dx = clamp(ix, 0, w - 1);
 						int index = (dy * w + dx);
-						lum[idx] = RGB2Y(src.get(index));
+						lum[idx] = src.get(index).getIntensity();
 						bak[idx] = lum[idx];
 						id[idx] = index;
 						j[idx] = index;
@@ -277,7 +272,7 @@ void renderer::get_luminance(const FrameBuffer &src, FrameBuffer &dest)
 	int n = dest.getIdxNum();
 #pragma omp parallel for
 	for (int i = 0; i < n; i++) {
-		double l = log(RGB2Y(src.get(i)) + 1.0);
+		double l = log(src.get(i).getIntensity() + 1.0);
 		dest.set(i, Color(l, l, l));
 	}
 }
@@ -378,8 +373,8 @@ void renderer::update(const FrameBuffer *src, FrameBuffer *dest, const FrameBuff
 				const double GAZE_SCALE = 700.0;
 //				const double GAZE_SCALE = 7000.0;
 
-				double u = ((double)x + rnd.get() + GAZE_SCALE * n.r) * INV_WIDTH;
-				double v = ((double)y + rnd.get() + GAZE_SCALE * n.g) * INV_HEIGHT;
+				double u = ((double)x + rnd.get() + GAZE_SCALE * n.getRaw(1)) * INV_WIDTH;
+				double v = ((double)y + rnd.get() + GAZE_SCALE * n.getRaw(1)) * INV_HEIGHT;
 
 				Ray r = cam_.get_ray(u, 1.0 - v, rnd);// 画像的に上下逆だったので、vを反転する
 //				Ray r = cam_.get_ray(u, 1.0 - v, rnd, Vec3(-10.0 * n[0], 10.0 * n[1], n[2]));// 画像的に上下逆だったので、vを反転する
