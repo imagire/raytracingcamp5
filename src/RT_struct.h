@@ -67,17 +67,22 @@ struct Color {
 	void set(const Color c) { r = c.r; g = c.g;b = c.b;}
 	void set(double r0, double g0, double b0) { r = r0; g = g0; b = b0;}
 
-	inline Color operator+(const Color &c) const { return Color(r + c.r, g + c.g, b + c.b); }
-	inline Color operator-(const Color &c) const { return Color(r - c.r, g - c.g, b - c.b); }
-	inline Color operator*(const Color &c) const { return Color(r * c.r, g * c.g, b * c.b); }
-	inline Color operator/(const Color &c) const { return Color(r / c.r, g / c.g, b / c.b); }
-	inline Color operator*(const Vec3 &v) const { return Color(r * v.x, g * v.y, b * v.z); }
-	inline Color operator+(double v) const { return Color(r + v, g + v, b + v); }
-	inline Color operator-(double v) const { return Color(r - v, g - v, b - v); }
-	inline Color operator*(double v) const { return Color(r * v, g * v, b * v); }
+	inline Color &operator=(const Color &c) { r = c.r; g = c.g; b = c.b; return *this; }
+	inline Color &operator+=(const Color &c) { r += c.r; g += c.g; b += c.b; }
+	inline Color &operator-=(const Color &c) { r -= c.r; g -= c.g; b -= c.b; }
+	inline Color &operator*=(const Color &c) { r *= c.r; g *= c.g; b *= c.b; }
+	inline Color &operator/=(const Color &c) { r /= c.r; g /= c.g; b /= c.b; }
+	inline const Color operator+(const Color &c) const { return Color(r + c.r, g + c.g, b + c.b); }
+	inline const Color operator-(const Color &c) const { return Color(r - c.r, g - c.g, b - c.b); }
+	inline const Color operator*(const Color &c) const { return Color(r * c.r, g * c.g, b * c.b); }
+	inline const Color operator/(const Color &c) const { return Color(r / c.r, g / c.g, b / c.b); }
+	inline const Color operator*(const Vec3 &v) const { return Color(r * v.x, g * v.y, b * v.z); }
+	inline const Color operator+(double v) const { return Color(r + v, g + v, b + v); }
+	inline const Color operator-(double v) const { return Color(r - v, g - v, b - v); }
+	inline const Color operator*(double v) const { return Color(r * v, g * v, b * v); }
 };
 
-template<typename T> T Uncharted2Tonemap(const T &x) {
+template<typename T> inline T Uncharted2Tonemap(const T &x) {
 	const double A = 0.15, B = 0.50, C = 0.10, D = 0.20, E = 0.02, F = 0.30;
 	return ((((x)*((x)*A+C*B) + D*E) / ((x)*((x)*A+B) + D*F)) - E / F);
 }
