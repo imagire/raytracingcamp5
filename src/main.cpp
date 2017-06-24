@@ -33,7 +33,7 @@
 #define FINISH_MARGIN 2
 
 
-void save(FB<ByteColor> *src, const char *filename)
+void save(RenderTarget<ByteColor> *src, const char *filename)
 {
 	int w = src->getWidth();
 	int h = src->getHeight();
@@ -51,29 +51,25 @@ int main()
 	int frame = 0;
 	bool ret;
 	int current;
-	FrameBuffer *fb[3];
+	RenderTarget<Color> *fb[2];
 	renderer *pRenderer;
 	HDRLoaderResult ibl_data;
 
-	FB<ByteColor> *image = new FB<ByteColor>(WIDTH, HEIGHT);
-	if (!image) goto image_failed;
+	RenderTarget<ByteColor> *image = new RenderTarget<ByteColor>(WIDTH, HEIGHT); if (!image) goto image_failed;
 
 	// frame buffer の初期化
 	current = 0;
-	fb[0] = new FrameBuffer(WIDTH, HEIGHT);// ダブルバッファ1
-	if (!fb[0])goto fb0_failed;
-	fb[1] = new FrameBuffer(WIDTH, HEIGHT);// ダブルバッファ2
-	if (!fb[1])goto fb1_failed;
-	fb[2] = new FrameBuffer(WIDTH, HEIGHT);// 法線マップ用
-	if (!fb[2])goto fb2_failed;
+	fb[0] = new RenderTarget<Color>(WIDTH, HEIGHT);	if (!fb[0])goto fb0_failed;
+	fb[1] = new RenderTarget<Color>(WIDTH, HEIGHT);	if (!fb[1])goto fb1_failed;
 
 
-	FB<double> *FB_Lum[2];
-	FB_Lum[0] = new FB<double>(WIDTH, HEIGHT);
-	FB_Lum[1] = new FB<double>(WIDTH, HEIGHT);
+	RenderTarget<double> *RT_Lum[2];
+	RT_Lum[0] = new RenderTarget<double>(WIDTH, HEIGHT); if (!RT_Lum[0])goto rtl0_failed;
+	RT_Lum[1] = new RenderTarget<double>(WIDTH, HEIGHT); if (!RT_Lum[1])goto rtl1_failed;
 
-	pRenderer = new renderer(WIDTH, HEIGHT);
-	if (!pRenderer)goto renderer_failed;
+	RenderTarget<Color> *RT_normal = new RenderTarget<Color>(WIDTH, HEIGHT); if (!RT_normal)goto normal_map_failed;
+
+	pRenderer = new renderer(WIDTH, HEIGHT); if (!pRenderer)goto renderer_failed;
 
 	ret = HDRLoader::load("media/Tokyo_BigSight/Tokyo_BigSight_3k.hdr", ibl_data);
 //	ret = HDRLoader::load("media/Ridgecrest_Road/Ridgecrest_Road_Env.hdr", ibl_data);
@@ -82,7 +78,7 @@ int main()
 	SAFE_DELETE_ARRAY(ibl_data.cols);// コピーされるので、実体は使われない
 
 	// 初期描画
-	pRenderer->update(fb[1 - current], fb[current], fb[2]);
+	pRenderer->update(fb[1 - current], fb[current], fb[1 - current]);
 	fb[current]->resolve(image);
 	save(image, "1st_render.png");
 	current = 1 - current;
@@ -94,27 +90,31 @@ int main()
 	current = 1 - current;
 
 	// 輝度抽出検出
-	pRenderer->get_luminance(*fb[1 - current], *FB_Lum[0]);
-	FB_Lum[0]->resolve(image);
+	pRenderer->get_luminance(*fb[1 - current], *RT_Lum[0]);
+	RT_Lum[0]->resolve(image);
 	save(image, "luminance.png");
 	current = 1 - current;
 
 	// エッジ検出
-	pRenderer->edge_detection(*FB_Lum[0], *FB_Lum[1]);
-	FB_Lum[1]->resolve(image);
+	pRenderer->edge_detection(*RT_Lum[0], *RT_Lum[1]);
+	RT_Lum[1]->resolve(image);
 	save(image, "edge.png");
 	current = 1 - current;
 
 	// エッジのガウスブラー
-	pRenderer->gauss_blur_x(*FB_Lum[1], *FB_Lum[0]);
-	pRenderer->gauss_blur_y(*FB_Lum[0], *FB_Lum[1]);
-	FB_Lum[1]->resolve(image);
+	pRenderer->gauss_blur_x(*RT_Lum[1], *RT_Lum[0]);
+	pRenderer->gauss_blur_y(*RT_Lum[0], *RT_Lum[1]);
+	RT_Lum[1]->resolve(image);
 	save(image, "edge_blurred.png");
 
 	// 法線方向の検出
-	pRenderer->compute_normal(*FB_Lum[1], *fb[2]);
-	fb[2]->resolve(image);
+	pRenderer->compute_normal(*RT_Lum[1], *RT_normal);
+	RT_normal->resolve(image);
 	save(image, "normal.png");
+
+	// 使わなくなったリソースの解放
+	SAFE_DELETE(RT_Lum[1]);
+	SAFE_DELETE(RT_Lum[0]);
 
 	// 再初期化
 	frame = 0;
@@ -124,7 +124,7 @@ int main()
 	do
 	{
 		// fb[1-current] を読み込んで fb[current]にレンダリング
-		pRenderer->update(fb[1 - current], fb[current], fb[2]);
+		pRenderer->update(fb[1 - current], fb[current], RT_normal);
 		frame++;
 
 		// 4分33秒以内に終了なので、前のフレームを考えてオーバーしそうならば終了する
@@ -153,12 +153,12 @@ int main()
 
 	SAFE_DELETE(pRenderer);
 renderer_failed:
-
-	SAFE_DELETE(FB_Lum[1]);
-	SAFE_DELETE(FB_Lum[0]);
-
-	SAFE_DELETE(fb[2]);
-fb2_failed:
+	SAFE_DELETE(RT_normal);
+normal_map_failed:
+	SAFE_DELETE(RT_Lum[1]);
+rtl1_failed:
+	SAFE_DELETE(RT_Lum[0]);
+rtl0_failed:
 	SAFE_DELETE(fb[1]);
 fb1_failed:
 	SAFE_DELETE(fb[0]);

@@ -19,7 +19,7 @@ bool IBL::initialize(int w, int h, const float *p)
 	dw_ = w;
 	dh_ = h;
 
-	pImage_ = new FrameBuffer(w, h);
+	pImage_ = new RenderTarget<Color>(w, h);
 	if (!pImage_) return false;
 
 #pragma omp for
@@ -43,7 +43,7 @@ inline static int clamp(int src, int v_min, int v_max)
 	return (v_max < d) ? v_max : d;
 }
 
-void renderer::edge_detection(const FB<double> &src, FB<double> &dest)
+void renderer::edge_detection(const RenderTarget<double> &src, RenderTarget<double> &dest)
 {
 	int w = src.getWidth();
 	int h = src.getHeight();
@@ -81,7 +81,7 @@ void renderer::edge_detection(const FB<double> &src, FB<double> &dest)
 		}
 	}
 }
-void renderer::gauss_blur_x(const FB<double> &src, FB<double> &dest)
+void renderer::gauss_blur_x(const RenderTarget<double> &src, RenderTarget<double> &dest)
 {
 	const double sigma2_inv = -1.0 / (2.0 * 20.0 * 20.0);
 	const int KERNEL_SIZE = 100;
@@ -117,7 +117,7 @@ void renderer::gauss_blur_x(const FB<double> &src, FB<double> &dest)
 	}
 }
 
-void renderer::gauss_blur_y(const FB<double> &src, FB<double> &dest)
+void renderer::gauss_blur_y(const RenderTarget<double> &src, RenderTarget<double> &dest)
 {
 	const double sigma2_inv = -1.0 / (2.0 * 20.0 * 20.0);
 	const int KERNEL_SIZE = 100;
@@ -154,7 +154,7 @@ void renderer::gauss_blur_y(const FB<double> &src, FB<double> &dest)
 	}
 }
 
-void renderer::compute_normal(const FB<double> &src, FrameBuffer &dest)
+void renderer::compute_normal(const RenderTarget<double> &src, RenderTarget<Color> &dest)
 {
 	int w = src.getWidth();
 	int h = src.getHeight();
@@ -189,7 +189,7 @@ void renderer::compute_normal(const FB<double> &src, FrameBuffer &dest)
 	}
 }
 
-void renderer::median_filter(const FrameBuffer &src, FrameBuffer &dest)
+void renderer::median_filter(const RenderTarget<Color> &src, RenderTarget<Color> &dest)
 {
 	int w = src.getWidth();
 	int h = src.getHeight();
@@ -258,7 +258,7 @@ void renderer::median_filter(const FrameBuffer &src, FrameBuffer &dest)
 	}
 }
 
-void renderer::copy(const FrameBuffer &src, FrameBuffer &dest)
+void renderer::copy(const RenderTarget<Color> &src, RenderTarget<Color> &dest)
 {
 	int n = dest.getIdxNum();
 #pragma omp parallel for
@@ -267,7 +267,7 @@ void renderer::copy(const FrameBuffer &src, FrameBuffer &dest)
 	}
 }
 
-void renderer::get_luminance(const FrameBuffer &src, FB<double> &dest)
+void renderer::get_luminance(const RenderTarget<Color> &src, RenderTarget<double> &dest)
 {
 	int n = dest.getIdxNum();
 #pragma omp parallel for
@@ -354,7 +354,7 @@ void renderer::setIBL(int width, int height, const float *image)
 	ibl_.initialize(width, height, image);
 }
 
-void renderer::update(const FrameBuffer *src, FrameBuffer *dest, const FrameBuffer *normal_map)const
+void renderer::update(const RenderTarget<Color> *src, RenderTarget<Color> *dest, const RenderTarget<Color> *normal_map)const
 {
 	const double INV_WIDTH = 1.0 / (double)WIDTH;
 	const double INV_HEIGHT = 1.0 / (double)HEIGHT;

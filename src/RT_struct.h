@@ -121,14 +121,14 @@ inline ByteColor Color::getRGB(double scale) {
 		(unsigned char)((255.99999) * pow(min(color.b, 1.0), 1 / 2.2)));
 }
 
-template<typename T> class FB {
+template<typename T> class RenderTarget {
 	int w_, h_;
 	int num_;// w_*h_
 	T *a_buf;
 
 public:
-	FB(int width, int height) : w_(width), h_(height) { num_ = width*height; a_buf = new T[num_]; }
-	~FB() { SAFE_DELETE_ARRAY(a_buf); }
+	RenderTarget(int width, int height) : w_(width), h_(height) { num_ = width*height; a_buf = new T[num_]; }
+	~RenderTarget() { SAFE_DELETE_ARRAY(a_buf); }
 
 	inline int getWidth() const { return w_; }
 	inline int getHeight() const { return h_; }
@@ -141,22 +141,22 @@ public:
 	inline void set(int idx, T c) { a_buf[idx] = c; }
 	inline const T *ref(int idx) const { return a_buf + idx; }
 
-	static inline const ByteColor getRGB(double &v, double scale=1.0) { double d = v * scale; d = (1.0 < d) ? 1.0 : d; unsigned char c = (unsigned char)(255.9999999*d); return ByteColor(c, c, c); }
-	static inline const ByteColor getRGB(Color &v, double scale = 1.0) { return v.getRGB(scale); }
-	static inline const ByteColor getRGB(ByteColor &v, double scale = 1.0) {
+	static inline const ByteColor getRGB(double &v, double scale) { double d = v * scale; d = (1.0 < d) ? 1.0 : d; unsigned char c = (unsigned char)(255.9999999*d); return ByteColor(c, c, c); }
+	static inline const ByteColor getRGB(Color &v, double scale) { return v.getRGB(scale); }
+	static inline const ByteColor getRGB(ByteColor &v, double scale) {
 		double r = scale*(double)v.r(); double g = scale*(double)v.g(); double b = scale*(double)v.b();
 		r = (r < 255.9) ? r : 255.9; g = (g < 255.9) ? g : 255.9; b = (b < 255.9) ? b : 255.9;
 		return v = ByteColor((unsigned char)r, (unsigned char)g, (unsigned char)b);
 	}
 
-	void resolve(FB<ByteColor> *dst, double scale = 1.0)
+	void resolve(RenderTarget<ByteColor> *dst, double scale = 1.0)
 	{
 #pragma omp parallel for
 		for (int i = 0; i < num_; i++) {
 			//			double tmp = data[i] / (double)steps;// SDR tone mapping
 			//			double tmp = 1.0 - exp(-data[i] * coeff);// tone mapping
 			//			buf[i] = (unsigned char)(pow(tmp, 1.0 / 2.2) * 255.999);// gamma correct
-			dst->set(i, getRGB(a_buf[i]));
+			dst->set(i, getRGB(a_buf[i], scale));
 		}
 	}
 
@@ -168,51 +168,10 @@ public:
 	{
 #pragma omp parallel for
 		for (int i = 0; i < num_; i++) {
-			set_zeto(a_buf[i]);
+			set_zero(a_buf[i]);
 		}
 	}
 };
-
-
-class FrameBuffer {
-	int w_, h_;
-	int num_;// w_*h_
-	Color *a_buf;
-public:
-	FrameBuffer(int width, int height) : w_(width), h_(height) { num_ = width*height; a_buf = new Color[num_]; }
-	~FrameBuffer() { SAFE_DELETE_ARRAY(a_buf); }
-
-	inline int getWidth() const { return w_; }
-	inline int getHeight() const { return h_; }
-	inline int getIdxNum() const { return num_; }
-	inline int getIdx(int x, int y) const {return y * w_ + x;}
-	inline Color *ref(int idx) { return a_buf + idx; }
-	inline Color *ref(int x, int y) { return a_buf + getIdx(x, y); }
-	inline Color get(int idx) const { return a_buf[idx]; }
-	inline Color get(int x, int y) const { return a_buf[ y * w_ + x]; }
-	inline void set(int idx, Color c) { a_buf[idx] = c; }
-	inline const Color *ref(int idx) const { return a_buf + idx; }
-
-	void resolve(FB<ByteColor> *dst, double scale = 1.0)
-	{
-#pragma omp parallel for
-		for (int i = 0; i < num_; i++) {
-//			double tmp = data[i] / (double)steps;// SDR tone mapping
-//			double tmp = 1.0 - exp(-data[i] * coeff);// tone mapping
-//			buf[i] = (unsigned char)(pow(tmp, 1.0 / 2.2) * 255.999);// gamma correct
-			dst->set(i, a_buf[i].getRGB(scale));
-		}
-	}
-	
-	void clear()
-	{
-#pragma omp parallel for
-		for (int i = 0; i < num_; i++) {
-			a_buf[i].set_zero();
-		}
-	}
-};
-
 
 inline Vec3 Vec3::random_in_unit_disc(my_rand &rnd)
 {

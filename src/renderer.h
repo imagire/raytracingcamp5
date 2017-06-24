@@ -29,7 +29,7 @@ class IBL {
 private:
 	int w_, h_;
 	double dw_, dh_;
-	FrameBuffer *pImage_;
+	RenderTarget<Color> *pImage_;
 public:
 	IBL() { w_ = 0; h_ = 0; dw_ = 0.0; dh_ = 0.0; pImage_ = nullptr; }
 	~IBL() { SAFE_DELETE(pImage_); }
@@ -57,14 +57,14 @@ public:
 	
 	void setIBL(int width, int height, const float *image);
 
-	void update(const FrameBuffer *src, FrameBuffer *dest, const FrameBuffer *normal_map)const;// なるべく早く出ること
+	void update(const RenderTarget<Color> *src, RenderTarget<Color> *dest, const RenderTarget<Color> *normal_map)const;// なるべく早く出ること
 	
-	static void copy(const FrameBuffer &src, FrameBuffer &dest);
-	static void median_filter(const FrameBuffer &src, FrameBuffer &dest);
-	static void get_luminance(const FrameBuffer &src, FB<double> &dest);
-	static void edge_detection(const FB<double> &src, FB<double> &dest);
-	static void gauss_blur_x(const FB<double> &src, FB<double> &dest);
-	static void gauss_blur_y(const FB<double> &src, FB<double> &dest);
-	static void compute_normal(const FB<double> &src, FrameBuffer &dest);
+	static void copy(const RenderTarget<Color> &src, RenderTarget<Color> &dest);
+	static void median_filter(const RenderTarget<Color> &src, RenderTarget<Color> &dest);
+	static void get_luminance(const RenderTarget<Color> &src, RenderTarget<double> &dest);
+	static void edge_detection(const RenderTarget<double> &src, RenderTarget<double> &dest);
+	static void gauss_blur_x(const RenderTarget<double> &src, RenderTarget<double> &dest);
+	static void gauss_blur_y(const RenderTarget<double> &src, RenderTarget<double> &dest);
+	static void compute_normal(const RenderTarget<double> &src, RenderTarget<Color> &dest);
 };
 #endif // !RENDERER_H
