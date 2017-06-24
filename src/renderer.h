@@ -57,7 +57,7 @@ public:
 	
 	void setIBL(int width, int height, const float *image);
 
-	void update(const RenderTarget<Color> *src, RenderTarget<Color> *dest, const RenderTarget<Color> *normal_map)const;// なるべく早く出ること
+	void update(const RenderTarget<Color> *src, RenderTarget<Color> *dest, const RenderTarget<Vec3> *normal_map)const;// なるべく早く出ること
 	
 	static void copy(const RenderTarget<Color> &src, RenderTarget<Color> &dest);
 	static void median_filter(const RenderTarget<Color> &src, RenderTarget<Color> &dest);
@@ -65,6 +65,6 @@ public:
 	static void edge_detection(const RenderTarget<double> &src, RenderTarget<double> &dest);
 	static void gauss_blur_x(const RenderTarget<double> &src, RenderTarget<double> &dest);
 	static void gauss_blur_y(const RenderTarget<double> &src, RenderTarget<double> &dest);
-	static void compute_normal(const RenderTarget<double> &src, RenderTarget<Color> &dest);
+	static void compute_normal(const RenderTarget<double> &src, RenderTarget<Vec3> &dest);
 };
 #endif // !RENDERER_H

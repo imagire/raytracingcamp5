@@ -7,10 +7,6 @@
 #include "renderer.h"
 
 
-#ifndef MY_ASSERT
-#include <assert.h>
-#define MY_ASSERT(x) assert(x)
-#endif
 
 bool IBL::initialize(int w, int h, const float *p)
 {
@@ -83,14 +79,15 @@ void renderer::edge_detection(const RenderTarget<double> &src, RenderTarget<doub
 }
 void renderer::gauss_blur_x(const RenderTarget<double> &src, RenderTarget<double> &dest)
 {
-	const double sigma2_inv = -1.0 / (2.0 * 20.0 * 20.0);
+	const double sigma2_inv = -1.0 / (2.0 * 50.0 * 50.0);
 	const int KERNEL_SIZE = 100;
 	double tbl[KERNEL_SIZE + 1] = { 1.0 };
-	double tbl_sum = 0.0;
+	double inv_tbl_sum = 1.0;
 	for (int i = 1; i <= KERNEL_SIZE; i++) {
 		tbl[i] = exp((double)i * (double)i * sigma2_inv);
-		tbl_sum += 2.0 * tbl[i];
+		inv_tbl_sum += 2.0 * tbl[i];
 	}
+	inv_tbl_sum = 1.0 / inv_tbl_sum;
 
 	int w = src.getWidth();
 	int h = src.getHeight();
@@ -110,8 +107,7 @@ void renderer::gauss_blur_x(const RenderTarget<double> &src, RenderTarget<double
 					s += weight * src.get(src_idx + ix);
 				}
 
-				s /= tbl_sum;
-				dest.set(dest_idx++, s);
+				dest.set(dest_idx++, s * inv_tbl_sum);
 			}
 		}
 	}
@@ -119,14 +115,15 @@ void renderer::gauss_blur_x(const RenderTarget<double> &src, RenderTarget<double
 
 void renderer::gauss_blur_y(const RenderTarget<double> &src, RenderTarget<double> &dest)
 {
-	const double sigma2_inv = -1.0 / (2.0 * 20.0 * 20.0);
+	const double sigma2_inv = -1.0 / (2.0 * 50.0 * 50.0);
 	const int KERNEL_SIZE = 100;
 	double tbl[KERNEL_SIZE + 1] = {1.0};
-	double tbl_sum = 0.0;
+	double inv_tbl_sum = 1.0;
 	for (int i = 1; i <= KERNEL_SIZE; i++) {
 		tbl[i] = exp((double)i * (double)i * sigma2_inv);
-		tbl_sum += 2.0 * tbl[i];
+		inv_tbl_sum += 2.0 * tbl[i];
 	}
+	inv_tbl_sum = 1.0 / inv_tbl_sum;
 
 	int w = src.getWidth();
 	int h = src.getHeight();
@@ -146,15 +143,14 @@ void renderer::gauss_blur_y(const RenderTarget<double> &src, RenderTarget<double
 					s += weight * src.get(iy * w + x);
 				}
 
-				s /= tbl_sum;
-				dest.set(dest_idx++, s);
+				dest.set(dest_idx++, s * inv_tbl_sum);
 				src_idx++;
 			}
 		}
 	}
 }
 
-void renderer::compute_normal(const RenderTarget<double> &src, RenderTarget<Color> &dest)
+void renderer::compute_normal(const RenderTarget<double> &src, RenderTarget<Vec3> &dest)
 {
 	int w = src.getWidth();
 	int h = src.getHeight();
@@ -181,9 +177,9 @@ void renderer::compute_normal(const RenderTarget<double> &src, RenderTarget<Colo
 				1.0*src.get(x2, y2) - 1.0*src.get(x2, y0);
 
 #ifndef SHIPPING
-			dest.set(dest_idx++, Color(0.25 * dx, 0.25 * dy, 0.5+0.5*sqrt(1.0 - dx * dx + dy * dy)));
+			dest.set(dest_idx++, Vec3(0.25 * dx, 0.25 * dy, sqrt(1.0 - dx * dx + dy * dy)));
 #else // SHIPPING
-			dest.set(dest_idx++, Color(0.25 * dx, 0.25 * dy, src.get(x, y).r));// いったん、zには明るさを入れる
+			dest.set(dest_idx++, Vec3(0.25 * dx, 0.25 * dy, src.get(x, y).r));// いったん、zには明るさを入れる
 #endif // !SHIPPING
 		}
 	}
@@ -354,7 +350,7 @@ void renderer::setIBL(int width, int height, const float *image)
 	ibl_.initialize(width, height, image);
 }
 
-void renderer::update(const RenderTarget<Color> *src, RenderTarget<Color> *dest, const RenderTarget<Color> *normal_map)const
+void renderer::update(const RenderTarget<Color> *src, RenderTarget<Color> *dest, const RenderTarget<Vec3> *normal_map)const
 {
 	const double INV_WIDTH = 1.0 / (double)WIDTH;
 	const double INV_HEIGHT = 1.0 / (double)HEIGHT;
@@ -368,13 +364,12 @@ void renderer::update(const RenderTarget<Color> *src, RenderTarget<Color> *dest,
 		for (int y = 0; y < HEIGHT; y++) {
 			int index = normal_map->getIdx(0, y);
 			for (int x = 0; x < WIDTH; x++) {
-				const Color n = normal_map->get(index);
+				const Vec3 n = normal_map->get(index);
 
-				const double GAZE_SCALE = 700.0;
-//				const double GAZE_SCALE = 7000.0;
+				const double GAZE_SCALE = 10000.0;
 
-				double u = ((double)x + rnd.get() + GAZE_SCALE * n.getRaw(1)) * INV_WIDTH;
-				double v = ((double)y + rnd.get() + GAZE_SCALE * n.getRaw(1)) * INV_HEIGHT;
+				double u = ((double)x + rnd.get() + GAZE_SCALE * n.x) * INV_WIDTH;
+				double v = ((double)y + rnd.get() + GAZE_SCALE * n.y) * INV_HEIGHT;
 
 				Ray r = cam_.get_ray(u, 1.0 - v, rnd);// 画像的に上下逆だったので、vを反転する
 //				Ray r = cam_.get_ray(u, 1.0 - v, rnd, Vec3(-10.0 * n[0], 10.0 * n[1], n[2]));// 画像的に上下逆だったので、vを反転する

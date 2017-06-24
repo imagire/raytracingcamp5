@@ -53,10 +53,14 @@ int main()
 	int current;
 	RenderTarget<ByteColor> *image;
 	RenderTarget<Color> *fb[2];
-	RenderTarget<Color> *RT_normal;
+	RenderTarget<Vec3> *RT_normal;
 	RenderTarget<double> *RT_Lum[2];
 	renderer *pRenderer;
 	HDRLoaderResult ibl_data;
+	clock_t t_table[10];
+	int t_table_count = 0;
+
+	t_table[t_table_count++] = clock();
 
 	image = new RenderTarget<ByteColor>(WIDTH, HEIGHT); if (!image) goto image_failed;
 
@@ -69,9 +73,11 @@ int main()
 	RT_Lum[0] = new RenderTarget<double>(WIDTH, HEIGHT); if (!RT_Lum[0])goto rtl0_failed;
 	RT_Lum[1] = new RenderTarget<double>(WIDTH, HEIGHT); if (!RT_Lum[1])goto rtl1_failed;
 
-	RT_normal = new RenderTarget<Color>(WIDTH, HEIGHT); if (!RT_normal)goto normal_map_failed;
+	RT_normal = new RenderTarget<Vec3>(WIDTH, HEIGHT); if (!RT_normal)goto normal_map_failed;
+	RT_normal->clear();
 
 	pRenderer = new renderer(WIDTH, HEIGHT); if (!pRenderer)goto renderer_failed;
+	t_table[t_table_count++] = clock();
 
 	ret = HDRLoader::load("media/Tokyo_BigSight/Tokyo_BigSight_3k.hdr", ibl_data);
 //	ret = HDRLoader::load("media/Ridgecrest_Road/Ridgecrest_Road_Env.hdr", ibl_data);
@@ -79,40 +85,48 @@ int main()
 	pRenderer->setIBL(ibl_data.width, ibl_data.height, ibl_data.cols);
 	SAFE_DELETE_ARRAY(ibl_data.cols);// コピーされるので、実体は使われない
 
+	t_table[t_table_count++] = clock();
+
 	// 初期描画
-	pRenderer->update(fb[1 - current], fb[current], fb[1 - current]);
+	pRenderer->update(fb[1 - current], fb[current], RT_normal);
 	fb[current]->resolve(image);
 	save(image, "1st_render.png");
 	current = 1 - current;
+	t_table[t_table_count++] = clock();
 
 	// メディアンフィルタでフィルタリング
 	pRenderer->median_filter(*fb[1 - current], *fb[current]);
 	fb[current]->resolve(image);
 	save(image, "median.png");
 	current = 1 - current;
+	t_table[t_table_count++] = clock();
 
 	// 輝度抽出検出
 	pRenderer->get_luminance(*fb[1 - current], *RT_Lum[0]);
 	RT_Lum[0]->resolve(image);
 	save(image, "luminance.png");
 	current = 1 - current;
+	t_table[t_table_count++] = clock();
 
 	// エッジ検出
 	pRenderer->edge_detection(*RT_Lum[0], *RT_Lum[1]);
 	RT_Lum[1]->resolve(image);
 	save(image, "edge.png");
 	current = 1 - current;
+	t_table[t_table_count++] = clock();
 
 	// エッジのガウスブラー
 	pRenderer->gauss_blur_x(*RT_Lum[1], *RT_Lum[0]);
 	pRenderer->gauss_blur_y(*RT_Lum[0], *RT_Lum[1]);
 	RT_Lum[1]->resolve(image);
 	save(image, "edge_blurred.png");
+	t_table[t_table_count++] = clock();
 
 	// 法線方向の検出
 	pRenderer->compute_normal(*RT_Lum[1], *RT_normal);
-	RT_normal->resolve(image);
+	RT_normal->resolve(image, 100.0);
 	save(image, "normal.png");
+	t_table[t_table_count++] = clock();
 
 	// 使わなくなったリソースの解放
 	SAFE_DELETE(RT_Lum[1]);
@@ -172,7 +186,18 @@ image_failed:
 	std::ofstream f;
 	f.open("log.txt", std::ios::out);
 	f << "frame count:" << frame << "<br>" << std::endl;
-	
+	int idx = 1;
+	f << "memory alloc[ms]:" << t_table[idx++] - t_table[idx - 1] << "<br>" << std::endl;
+	f << "load IBL[ms]:" << t_table[idx++] - t_table[idx - 1] << "<br>" << std::endl;
+	f << "1st_render[ms]:" << t_table[idx++] - t_table[idx - 1] << "<br>" << std::endl;
+	f << "median[ms]:" << t_table[idx++] - t_table[idx - 1] << "<br>" << std::endl;
+	f << "luminance[ms]:" << t_table[idx++] - t_table[idx - 1] << "<br>" << std::endl;
+	f << "edge[ms]:" << t_table[idx++] - t_table[idx - 1] << "<br>" << std::endl;
+	f << "edge_blurred[ms]:" << t_table[idx++] - t_table[idx - 1] << "<br>" << std::endl;
+	f << "normal[ms]:" << t_table[idx++] - t_table[idx - 1] << "<br>" << std::endl;
+
+	MY_ASSERT(idx == t_table_count);
+
 	return 0;
 }
 

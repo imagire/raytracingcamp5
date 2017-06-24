@@ -8,6 +8,10 @@
 #define PI 3.141592653589793826433
 #endif// !PI
 
+#ifndef MY_ASSERT
+#include <assert.h>
+#define MY_ASSERT(x) assert(x)
+#endif
 
 #ifndef SAFE_DELETE
 #define SAFE_DELETE(p) {if(p)delete(p);(p)=nullptr;}
@@ -98,7 +102,11 @@ public:
 	inline const Color operator*(double v) const { return Color(r * v, g * v, b * v); }
 
 	inline double getIntensity()const { return 0.299 * r + 0.587 * g + 0.114 * b; }
-	inline double getRaw(int idx)const { return idx ==0 ? r : (idx == 1 ? g : b); }
+	inline double getRaw(int idx)const { return idx == 0 ? r : (idx == 1 ? g : b); }
+	// 取りたいが法線マップ用
+	inline double getR(int idx)const { return r; }
+	inline double getG(int idx)const { return g; }
+	inline double getB(int idx)const { return b; }
 };
 
 template<typename T> inline T Uncharted2Tonemap(const T &x) {
@@ -109,7 +117,8 @@ template<typename T> inline T Uncharted2Tonemap(const T &x) {
 inline ByteColor Color::getRGB(double scale) {
 	// FilmicTonemapping
 	// http://filmicworlds.com/blog/filmic-tonemapping-operators/
-	Color v = (*this) * 16 * scale;  // Hardcoded Exposure Adjustment
+	Color v = (*this) * 1.0 * scale;  // Hardcoded Exposure Adjustment
+//	Color v = (*this) * 16 * scale;  // Hardcoded Exposure Adjustment
 	double ExposureBias = 2.0;
 	Color curr = Uncharted2Tonemap<Color>(v*ExposureBias);
 	const double W = 11.2;
@@ -142,6 +151,10 @@ public:
 	inline const T *ref(int idx) const { return a_buf + idx; }
 
 	static inline const ByteColor getRGB(double &v, double scale) { double d = v * scale; d = (1.0 < d) ? 1.0 : d; unsigned char c = (unsigned char)(255.9999999*d); return ByteColor(c, c, c); }
+	static inline const ByteColor getRGB(Vec3 &v, double scale) { Vec3 d = v * scale; 
+	d.x = (1.0 < d.x) ? 1.0 : d.x; d.y = (1.0 < d.y) ? 1.0 : d.y; d.z = (1.0 < d.z) ? 1.0 : d.z;
+	d.x = (d.x<-1.0) ? -1.0 : d.x; d.y = (d.y<-1.0) ? -1.0 : d.y; d.z = (d.z<-1.0) ? -1.0 : d.z;
+	return ByteColor((unsigned char)(255.99*(d.x*0.5 + 0.5)), (unsigned char)(255.99*(d.y*0.5 + 0.5)), (unsigned char)(255.99*(d.z*0.5 + 0.5))); }
 	static inline const ByteColor getRGB(Color &v, double scale) { return v.getRGB(scale); }
 	static inline const ByteColor getRGB(ByteColor &v, double scale) {
 		double r = scale*(double)v.r(); double g = scale*(double)v.g(); double b = scale*(double)v.b();
@@ -149,6 +162,10 @@ public:
 		return v = ByteColor((unsigned char)r, (unsigned char)g, (unsigned char)b);
 	}
 
+	static inline void set_zero(double &v) { v = 0; }
+	static inline void set_zero(Vec3 &v) { v.x = v.y = v.z = 0.0; }
+	static inline void set_zero(Color &v) { v.set_zero(); }
+	static inline void set_zero(ByteColor &v) { v = ByteColor(0, 0, 0); }
 	void resolve(RenderTarget<ByteColor> *dst, double scale = 1.0)
 	{
 #pragma omp parallel for
@@ -159,10 +176,6 @@ public:
 			dst->set(i, getRGB(a_buf[i], scale));
 		}
 	}
-
-	static inline void set_zero(double &v) { v = 0; }
-	static inline void set_zero(Color &v) { v.set_zero(); }
-	static inline void set_zero(ByteColor &v) { v = ByteColor(0, 0, 0); }
 
 	void clear()
 	{
