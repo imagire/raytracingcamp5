@@ -61,10 +61,10 @@ public:
 	
 	static void copy(const FrameBuffer &src, FrameBuffer &dest);
 	static void median_filter(const FrameBuffer &src, FrameBuffer &dest);
-	static void get_luminance(const FrameBuffer &src, FrameBuffer &dest);
-	static void edge_detection(const FrameBuffer &src, FrameBuffer &dest);
-	static void gauss_blur_x(const FrameBuffer &src, FrameBuffer &dest);
-	static void gauss_blur_y(const FrameBuffer &src, FrameBuffer &dest);
-	static void compute_normal(const FrameBuffer &src, FrameBuffer &dest);
+	static void get_luminance(const FrameBuffer &src, FB<double> &dest);
+	static void edge_detection(const FB<double> &src, FB<double> &dest);
+	static void gauss_blur_x(const FB<double> &src, FB<double> &dest);
+	static void gauss_blur_y(const FB<double> &src, FB<double> &dest);
+	static void compute_normal(const FB<double> &src, FrameBuffer &dest);
 };
 #endif // !RENDERER_H

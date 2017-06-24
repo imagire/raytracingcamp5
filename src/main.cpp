@@ -56,7 +56,6 @@ int main()
 	HDRLoaderResult ibl_data;
 
 	FB<ByteColor> *image = new FB<ByteColor>(WIDTH, HEIGHT);
-//	FrameBufferRGB *image = new FrameBufferRGB(WIDTH, HEIGHT);
 	if (!image) goto image_failed;
 
 	// frame buffer の初期化
@@ -67,6 +66,11 @@ int main()
 	if (!fb[1])goto fb1_failed;
 	fb[2] = new FrameBuffer(WIDTH, HEIGHT);// 法線マップ用
 	if (!fb[2])goto fb2_failed;
+
+
+	FB<double> *FB_Lum[2];
+	FB_Lum[0] = new FB<double>(WIDTH, HEIGHT);
+	FB_Lum[1] = new FB<double>(WIDTH, HEIGHT);
 
 	pRenderer = new renderer(WIDTH, HEIGHT);
 	if (!pRenderer)goto renderer_failed;
@@ -90,25 +94,25 @@ int main()
 	current = 1 - current;
 
 	// 輝度抽出検出
-	pRenderer->get_luminance(*fb[1 - current], *fb[2]);
-	fb[2]->resolve(image);
+	pRenderer->get_luminance(*fb[1 - current], *FB_Lum[0]);
+	FB_Lum[0]->resolve(image);
 	save(image, "luminance.png");
 	current = 1 - current;
 
 	// エッジ検出
-	pRenderer->edge_detection(*fb[2], *fb[1 - current]);
-	fb[1-current]->resolve(image);
+	pRenderer->edge_detection(*FB_Lum[0], *FB_Lum[1]);
+	FB_Lum[1]->resolve(image);
 	save(image, "edge.png");
 	current = 1 - current;
 
 	// エッジのガウスブラー
-	pRenderer->gauss_blur_x(*fb[current], *fb[2]);
-	pRenderer->gauss_blur_y(*fb[2], *fb[current]);
-	fb[current]->resolve(image);
+	pRenderer->gauss_blur_x(*FB_Lum[1], *FB_Lum[0]);
+	pRenderer->gauss_blur_y(*FB_Lum[0], *FB_Lum[1]);
+	FB_Lum[1]->resolve(image);
 	save(image, "edge_blurred.png");
 
 	// 法線方向の検出
-	pRenderer->compute_normal(*fb[current], *fb[2]);
+	pRenderer->compute_normal(*FB_Lum[1], *fb[2]);
 	fb[2]->resolve(image);
 	save(image, "normal.png");
 
@@ -149,6 +153,10 @@ int main()
 
 	SAFE_DELETE(pRenderer);
 renderer_failed:
+
+	SAFE_DELETE(FB_Lum[1]);
+	SAFE_DELETE(FB_Lum[0]);
+
 	SAFE_DELETE(fb[2]);
 fb2_failed:
 	SAFE_DELETE(fb[1]);

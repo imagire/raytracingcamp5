@@ -121,24 +121,6 @@ inline ByteColor Color::getRGB(double scale) {
 		(unsigned char)((255.99999) * pow(min(color.b, 1.0), 1 / 2.2)));
 }
 
-#if 0
-class FrameBufferRGB {
-	int w_, h_;
-	int num_;// w_*h_
-	ByteColor *a_buf;
-public:
-	FrameBufferRGB(int width, int height) : w_(width), h_(height) { num_ = width*height; a_buf = new ByteColor[num_]; }
-	~FrameBufferRGB() { SAFE_DELETE_ARRAY(a_buf); }
-
-	inline int getWidth() const { return w_; }
-	inline int getHeight() const { return h_; }
-
-	inline ByteColor get(int idx) const { return a_buf[idx]; }
-	inline ByteColor *ref(int idx) { return a_buf + idx; }
-	inline void set(int idx, ByteColor c) { a_buf[idx] = c; }
-};
-#endif
-
 template<typename T> class FB {
 	int w_, h_;
 	int num_;// w_*h_
@@ -159,12 +141,12 @@ public:
 	inline void set(int idx, T c) { a_buf[idx] = c; }
 	inline const T *ref(int idx) const { return a_buf + idx; }
 
-	static inline ByteColor getRGB(double &v, double scale) { double d = v * scale; d = (1.0 < d) ? 1.0 : d; unsigned char c = (unsigned char)(255.9999999*d); ByteColor(c, c, c); }
-	static inline ByteColor getRGB(Color &v, double scale) { v.getRGB(scale) }
-	static inline ByteColor getRGB(ByteColor &v, double scale) {
+	static inline const ByteColor getRGB(double &v, double scale=1.0) { double d = v * scale; d = (1.0 < d) ? 1.0 : d; unsigned char c = (unsigned char)(255.9999999*d); return ByteColor(c, c, c); }
+	static inline const ByteColor getRGB(Color &v, double scale = 1.0) { return v.getRGB(scale); }
+	static inline const ByteColor getRGB(ByteColor &v, double scale = 1.0) {
 		double r = scale*(double)v.r(); double g = scale*(double)v.g(); double b = scale*(double)v.b();
 		r = (r < 255.9) ? r : 255.9; g = (g < 255.9) ? g : 255.9; b = (b < 255.9) ? b : 255.9;
-		v = ByteColor((unsigned char)r, (unsigned char)g, (unsigned char)b);
+		return v = ByteColor((unsigned char)r, (unsigned char)g, (unsigned char)b);
 	}
 
 	void resolve(FB<ByteColor> *dst, double scale = 1.0)

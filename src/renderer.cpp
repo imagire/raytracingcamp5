@@ -43,7 +43,7 @@ inline static int clamp(int src, int v_min, int v_max)
 	return (v_max < d) ? v_max : d;
 }
 
-void renderer::edge_detection(const FrameBuffer &src, FrameBuffer &dest)
+void renderer::edge_detection(const FB<double> &src, FB<double> &dest)
 {
 	int w = src.getWidth();
 	int h = src.getHeight();
@@ -63,25 +63,25 @@ void renderer::edge_detection(const FrameBuffer &src, FrameBuffer &dest)
 
 				// Sobelフィルタ
 				double dx =
-					1.0*src.get(y0 * w + x2).getRaw(0) - 1.0*src.get(y0 * w + x0).getRaw(0) +
-					2.0*src.get(y1 * w + x2).getRaw(0) - 2.0*src.get(y1 * w + x0).getRaw(0) +
-					1.0*src.get(y2 * w + x2).getRaw(0) - 1.0*src.get(y2 * w + x0).getRaw(0);
+					1.0*src.get(y0 * w + x2) - 1.0*src.get(y0 * w + x0) +
+					2.0*src.get(y1 * w + x2) - 2.0*src.get(y1 * w + x0) +
+					1.0*src.get(y2 * w + x2) - 1.0*src.get(y2 * w + x0);
 				double dy =
-					1.0*src.get(y2 * w + x0).getRaw(0) - 1.0*src.get(y0 * w + x0).getRaw(0) +
-					2.0*src.get(y2 * w + x1).getRaw(0) - 2.0*src.get(y0 * w + x1).getRaw(0) +
-					1.0*src.get(y2 * w + x2).getRaw(0) - 1.0*src.get(y0 * w + x2).getRaw(0);
+					1.0*src.get(y2 * w + x0) - 1.0*src.get(y0 * w + x0) +
+					2.0*src.get(y2 * w + x1) - 2.0*src.get(y0 * w + x1) +
+					1.0*src.get(y2 * w + x2) - 1.0*src.get(y0 * w + x2);
 
 				dx = (dx < 0) ? -dx : dx;
 				dy = (dy < 0) ? -dy : dy;
 
 				double v = 0.125 * (dx + dy);
-				dest.set(dest_idx, Color(v,v,v));
+				dest.set(dest_idx, v);
 				dest_idx++;
 			}
 		}
 	}
 }
-void renderer::gauss_blur_x(const FrameBuffer &src, FrameBuffer &dest)
+void renderer::gauss_blur_x(const FB<double> &src, FB<double> &dest)
 {
 	const double sigma2_inv = -1.0 / (2.0 * 20.0 * 20.0);
 	const int KERNEL_SIZE = 100;
@@ -107,17 +107,17 @@ void renderer::gauss_blur_x(const FrameBuffer &src, FrameBuffer &dest)
 				for (int i = -KERNEL_SIZE; i <= KERNEL_SIZE; i++) {
 					int ix = clamp(x + i, 0, w - 1);
 					double weight = tbl[(i < 0) ? (-i) : i];
-					s += weight * src.get(src_idx + ix).getRaw(0);
+					s += weight * src.get(src_idx + ix);
 				}
 
 				s /= tbl_sum;
-				dest.set(dest_idx++, Color(s, s, s));
+				dest.set(dest_idx++, s);
 			}
 		}
 	}
 }
 
-void renderer::gauss_blur_y(const FrameBuffer &src, FrameBuffer &dest)
+void renderer::gauss_blur_y(const FB<double> &src, FB<double> &dest)
 {
 	const double sigma2_inv = -1.0 / (2.0 * 20.0 * 20.0);
 	const int KERNEL_SIZE = 100;
@@ -143,18 +143,18 @@ void renderer::gauss_blur_y(const FrameBuffer &src, FrameBuffer &dest)
 				for (int i = -KERNEL_SIZE; i <= KERNEL_SIZE; i++) {
 					int iy = clamp(y + i, 0, h - 1);
 					double weight = tbl[(i < 0) ? (-i) : i];
-					s += weight * src.get(iy * w + x).getRaw(0);
+					s += weight * src.get(iy * w + x);
 				}
 
 				s /= tbl_sum;
-				dest.set(dest_idx++, Color(s, s, s));
+				dest.set(dest_idx++, s);
 				src_idx++;
 			}
 		}
 	}
 }
 
-void renderer::compute_normal(const FrameBuffer &src, FrameBuffer &dest)
+void renderer::compute_normal(const FB<double> &src, FrameBuffer &dest)
 {
 	int w = src.getWidth();
 	int h = src.getHeight();
@@ -172,13 +172,13 @@ void renderer::compute_normal(const FrameBuffer &src, FrameBuffer &dest)
 
 			// Sobelフィルタ
 			double dx =
-				1.0*src.get(x2, y0).getRaw(0) - 1.0*src.get(x0, y0).getRaw(0) +
-				2.0*src.get(x2, y1).getRaw(0) - 2.0*src.get(x0, y1).getRaw(0) +
-				1.0*src.get(x2, y2).getRaw(0) - 1.0*src.get(x0, y2).getRaw(0);
+				1.0*src.get(x2, y0) - 1.0*src.get(x0, y0) +
+				2.0*src.get(x2, y1) - 2.0*src.get(x0, y1) +
+				1.0*src.get(x2, y2) - 1.0*src.get(x0, y2);
 			double dy =
-				1.0*src.get(x0, y2).getRaw(0) - 1.0*src.get(x0, y0).getRaw(0) +
-				2.0*src.get(x1, y2).getRaw(0) - 2.0*src.get(x1, y0).getRaw(0) +
-				1.0*src.get(x2, y2).getRaw(0) - 1.0*src.get(x2, y0).getRaw(0);
+				1.0*src.get(x0, y2) - 1.0*src.get(x0, y0) +
+				2.0*src.get(x1, y2) - 2.0*src.get(x1, y0) +
+				1.0*src.get(x2, y2) - 1.0*src.get(x2, y0);
 
 #ifndef SHIPPING
 			dest.set(dest_idx++, Color(0.25 * dx, 0.25 * dy, 0.5+0.5*sqrt(1.0 - dx * dx + dy * dy)));
@@ -267,13 +267,13 @@ void renderer::copy(const FrameBuffer &src, FrameBuffer &dest)
 	}
 }
 
-void renderer::get_luminance(const FrameBuffer &src, FrameBuffer &dest)
+void renderer::get_luminance(const FrameBuffer &src, FB<double> &dest)
 {
 	int n = dest.getIdxNum();
 #pragma omp parallel for
 	for (int i = 0; i < n; i++) {
 		double l = log(src.get(i).getIntensity() + 1.0);
-		dest.set(i, Color(l, l, l));
+		dest.set(i, l);
 	}
 }
 
