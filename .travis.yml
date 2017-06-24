@@ -26,7 +26,7 @@ after_success:
   - rm -fr ./media
 #  output log
   - echo 'var html = '\'\'';' > common.js
-  - echo 'html += '\''更新時刻:'`date`\'';' >> common.js
+  - echo 'html += '\''更新時刻:'`date`'<br>'\'';' >> common.js
   - echo 'html += '\'"$(<log.txt)"'<br>'\'';' >> common.js
   - echo 'document.getElementById('\''include'\'').innerHTML = html;' >>  common.js
 # commit
