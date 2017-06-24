@@ -74,7 +74,7 @@ int main()
 //	ret = HDRLoader::load("media/Ridgecrest_Road/Ridgecrest_Road_Env.hdr", ibl_data);
 
 	pRenderer->setIBL(ibl_data.width, ibl_data.height, ibl_data.cols);
-	delete[] ibl_data.cols;// コピーされるので、実体は使われない
+	SAFE_DELETE_ARRAY(ibl_data.cols);// コピーされるので、実体は使われない
 
 	// 初期描画
 	pRenderer->update(fb[1 - current], fb[current], fb[2]);
@@ -146,15 +146,15 @@ int main()
 		t_last = t;
 	}while (true);
 
-	delete pRenderer;
+	SAFE_DELETE(pRenderer);
 renderer_failed:
-	delete[] fb[2];
+	SAFE_DELETE(fb[2]);
 fb2_failed:
-	delete[] fb[1];
+	SAFE_DELETE(fb[1]);
 fb1_failed:
-	delete[] fb[0];
+	SAFE_DELETE(fb[0]);
 fb0_failed:
-	delete[] image;
+	SAFE_DELETE_ARRAY(image);
 image_failed:
 
 	// log 出力

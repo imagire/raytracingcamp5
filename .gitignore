@@ -90,3 +90,4 @@ ipch/
 
 # プロジェクトの結果ファイル
 runtime/*.png
+log.txt
