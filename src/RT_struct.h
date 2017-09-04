@@ -267,7 +267,7 @@ private:
 	Vec3 albedo;
 public:
 	Lambertian(const Vec3& a) : albedo(a) {}
-	virtual bool scatter(const Ray& r_in, const HitRecord& rec, Vec3& attenuation, Color& emmisive, Ray& scattered, my_rand &rnd) const {
+	bool scatter(const Ray& r_in, const HitRecord& rec, Vec3& attenuation, Color& emmisive, Ray& scattered, my_rand &rnd) const override {
 		Vec3 target = rec.p + rec.normal + Vec3::random_in_unit_sphere(rnd);
 		scattered = Ray(rec.p, target - rec.p);
 		attenuation = albedo;
@@ -282,7 +282,7 @@ private:
 	double fuzz;
 public:
 	Metal(const Vec3& a, double f) : albedo(a) { if (f < 1) fuzz = f; else fuzz = 1; }
-	virtual bool scatter(const Ray& r_in, const HitRecord& rec, Vec3& attenuation, Color& emmisive, Ray& scattered, my_rand &rnd) const {
+	bool scatter(const Ray& r_in, const HitRecord& rec, Vec3& attenuation, Color& emmisive, Ray& scattered, my_rand &rnd) const override {
 		Vec3 reflected = r_in.direction().normalize().reflect(rec.normal);
 		scattered = Ray(rec.p, reflected + Vec3::random_in_unit_sphere(rnd) * fuzz);
 		attenuation = albedo;
@@ -300,7 +300,7 @@ private:
 	double fuzz;
 public:
 	GlaredLight(const Vec3& a, const Color& e, double r, double r_core, double f) : albedo(a), emissive_(e), outer_radius_(r), inner_radius_(r_core) { if (f < 1) fuzz = f; else fuzz = 1; }
-	virtual bool scatter(const Ray& r_in, const HitRecord& rec, Vec3& attenuation, Color& emmisive, Ray& scattered, my_rand &rnd) const {
+	bool scatter(const Ray& r_in, const HitRecord& rec, Vec3& attenuation, Color& emmisive, Ray& scattered, my_rand &rnd) const override {
 
 		attenuation = Vec3(1, 1, 1);
 		emmisive = Color(0, 0, 0);
@@ -345,7 +345,7 @@ public:
 class Dielectric : public Material {
 public:
 	Dielectric(float ri) : ref_idx(ri) {}
-	virtual bool scatter(const Ray& r_in, const HitRecord& rec, Vec3& attenuation, Color& emmisive, Ray& scattered, my_rand &rnd) const {
+	bool scatter(const Ray& r_in, const HitRecord& rec, Vec3& attenuation, Color& emmisive, Ray& scattered, my_rand &rnd) const override {
 		Vec3 outward_normal;
 		Vec3 reflected = r_in.direction().reflect(rec.normal);
 		double ni_over_nt;

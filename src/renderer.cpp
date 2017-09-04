@@ -345,14 +345,14 @@ Color renderer::raytrace(Ray r, int depth, my_rand &rnd)const
 	Color emmisive;
 	if (50 <= depth) return 0.0;
 
-	rec.mat_ptr->scatter(r, rec, attenuation, emmisive, scattered, rnd);
+	bool reflected = rec.mat_ptr->scatter(r, rec, attenuation, emmisive, scattered, rnd);
 	double russian_roulette = max(attenuation.x, max(attenuation.y, attenuation.z));
 
 	if (3 <= depth && rnd.get() < russian_roulette) {
 		return emmisive;
 	}
 
-	return raytrace(scattered, depth + 1, rnd) * attenuation + emmisive;
+	return raytrace(scattered, reflected ? (depth + 1) : depth, rnd) * attenuation + emmisive;
 }
 
 void renderer::setIBL(int width, int height, const float *image)
