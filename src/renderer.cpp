@@ -381,8 +381,8 @@ void renderer::update(const RenderTarget<Color> *src, RenderTarget<Color> *dest,
 				for (int sy = 0; sy < SUPER_SAMPLES; sy++) {
 					for (int sx = 0; sx < SUPER_SAMPLES; sx++) {
 
-						const double GAZE_SCALE = 0.0;
-//						const double GAZE_SCALE = 10000.0;
+//						const double GAZE_SCALE = 0.0;
+						const double GAZE_SCALE = 10000.0;
 
 		//				double u = ((double)x + rnd.get() + GAZE_SCALE * n.x) * INV_WIDTH;
 		//				double v = ((double)y + rnd.get() + GAZE_SCALE * n.y) * INV_HEIGHT;
