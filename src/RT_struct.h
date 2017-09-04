@@ -1,6 +1,7 @@
 #ifndef RT_STRUCT_H
 #define RT_STRUCT_H
 
+#include <cfloat>
 #include <cmath>
 #include "my_rand.h"
 
