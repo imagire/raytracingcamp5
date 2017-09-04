@@ -316,6 +316,7 @@ renderer::renderer(int w, int h)
 	scene_.Append(new Sphere(Vec3(0, 1, 0), 1.0, new Dielectric(1.5)));
 	scene_.Append(new Sphere(Vec3(+4, 1, 0), 1.0, new Lambertian(Vec3(0.4, 0.2, 0.1))));
 	scene_.Append(new Sphere(Vec3(-4, 1, 0), 1.0, new Metal(Vec3(0.7, 0.6, 0.5), 0.0)));
+	scene_.Append(new Sphere(Vec3(-2, 1.5, -2), 1.0, new GlaredLight(Vec3(0.1, 0.1, 0.1), Color(7.0, 15.0, 2.0), 1.0, 0.4, 0.2)));
 }
 
 renderer::~renderer()
@@ -340,17 +341,18 @@ Color renderer::raytrace(Ray r, int depth, my_rand &rnd)const
 	}
 	
 	Ray scattered;
-	Vec3 attenuation;
+	Vec3 attenuation; 
+	Color emmisive;
 	if (50 <= depth) return 0.0;
 
-	rec.mat_ptr->scatter(r, rec, attenuation, scattered, rnd);
+	rec.mat_ptr->scatter(r, rec, attenuation, emmisive, scattered, rnd);
 	double russian_roulette = max(attenuation.x, max(attenuation.y, attenuation.z));
 
-	if (5 <= depth && rnd.get() < russian_roulette) {
-		return 0.0;
+	if (3 <= depth && rnd.get() < russian_roulette) {
+		return emmisive;
 	}
 
-	return raytrace(scattered, depth + 1, rnd) * attenuation;
+	return raytrace(scattered, depth + 1, rnd) * attenuation + emmisive;
 }
 
 void renderer::setIBL(int width, int height, const float *image)
@@ -379,6 +381,7 @@ void renderer::update(const RenderTarget<Color> *src, RenderTarget<Color> *dest,
 				for (int sy = 0; sy < SUPER_SAMPLES; sy++) {
 					for (int sx = 0; sx < SUPER_SAMPLES; sx++) {
 
+//						const double GAZE_SCALE = 0.0;
 						const double GAZE_SCALE = 10000.0;
 
 		//				double u = ((double)x + rnd.get() + GAZE_SCALE * n.x) * INV_WIDTH;

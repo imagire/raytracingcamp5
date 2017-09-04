@@ -26,10 +26,10 @@ struct Vec3 {
 	Vec3(double x = 0, double y = 0, double z = 0) : x(x), y(y), z(z) {}
 
 	inline Vec3 &operator=(const Vec3 &v) { x = v.x; y = v.y; z = v.z; return *this; }
-	inline Vec3 &operator+=(const Vec3 &v) { x += v.x; y += v.y; z += v.z; }
-	inline Vec3 &operator-=(const Vec3 &v) { x -= v.x; y -= v.y; z -= v.z; }
-	inline Vec3 &operator*=(const Vec3 &v) { x *= v.x; y *= v.y; z *= v.z; }
-	inline Vec3 &operator/=(const Vec3 &v) { x /= v.x; y /= v.y; z /= v.z; }
+	inline Vec3 &operator+=(const Vec3 &v) { x += v.x; y += v.y; z += v.z; return *this;}
+	inline Vec3 &operator-=(const Vec3 &v) { x -= v.x; y -= v.y; z -= v.z; return *this;}
+	inline Vec3 &operator*=(const Vec3 &v) { x *= v.x; y *= v.y; z *= v.z; return *this;}
+	inline Vec3 &operator/=(const Vec3 &v) { x /= v.x; y /= v.y; z /= v.z; return *this;}
 
 	inline const Vec3 operator+(const Vec3 &b) const {return Vec3(x + b.x, y + b.y, z + b.z);}
 	inline const Vec3 operator-(const Vec3 &b) const {return Vec3(x - b.x, y - b.y, z - b.z);}
@@ -223,6 +223,31 @@ struct HitRecord
 	Material *mat_ptr;
 };
 
+inline bool hit_sphere(const Vec3& center, double radius, const Ray& r, double tmin, double tmax, HitRecord& rec)
+{
+	Vec3 oc = r.origin() - center;
+	double a = dot(r.direction(), r.direction());
+	double b = dot(oc, r.direction());
+	double c = dot(oc, oc) - radius*radius;
+	double discriminant = b*b - a*c;
+	if (0 < discriminant) {
+		double temp = (-b - sqrt(discriminant)) / a;
+		if (temp < tmax && temp > tmin) {
+			rec.t = temp;
+			rec.p = r.get(rec.t);
+			rec.normal = (rec.p - center) / radius;
+			return true;
+		}
+		temp = (-b + sqrt(discriminant)) / a;
+		if (temp < tmax && temp > tmin) {
+			rec.t = temp;
+			rec.p = r.get(rec.t);
+			rec.normal = (rec.p - center) / radius;
+			return true;
+		}
+	}
+	return false;
+}
 
 class Material {
 protected:
@@ -233,7 +258,7 @@ protected:
 	}
 
 public:
-	virtual bool scatter(const Ray& r_in, const HitRecord& rec, Vec3& attenuation, Ray& scattered, my_rand &rnd) const = 0;
+	virtual bool scatter(const Ray& r_in, const HitRecord& rec, Vec3& attenuation, Color& emmisive, Ray& scattered, my_rand &rnd) const = 0;
 };
 
 class Lambertian : public Material {
@@ -241,10 +266,11 @@ private:
 	Vec3 albedo;
 public:
 	Lambertian(const Vec3& a) : albedo(a) {}
-	virtual bool scatter(const Ray& r_in, const HitRecord& rec, Vec3& attenuation, Ray& scattered, my_rand &rnd) const {
+	virtual bool scatter(const Ray& r_in, const HitRecord& rec, Vec3& attenuation, Color& emmisive, Ray& scattered, my_rand &rnd) const {
 		Vec3 target = rec.p + rec.normal + Vec3::random_in_unit_sphere(rnd);
 		scattered = Ray(rec.p, target - rec.p);
 		attenuation = albedo;
+		emmisive = Color(0, 0, 0);
 		return true;
 	}
 };
@@ -252,25 +278,78 @@ public:
 class Metal : public Material {
 private:
 	Vec3 albedo;
-	float fuzz;
+	double fuzz;
 public:
-	Metal(const Vec3& a, float f) : albedo(a) { if (f < 1) fuzz = f; else fuzz = 1; }
-	virtual bool scatter(const Ray& r_in, const HitRecord& rec, Vec3& attenuation, Ray& scattered, my_rand &rnd) const {
+	Metal(const Vec3& a, double f) : albedo(a) { if (f < 1) fuzz = f; else fuzz = 1; }
+	virtual bool scatter(const Ray& r_in, const HitRecord& rec, Vec3& attenuation, Color& emmisive, Ray& scattered, my_rand &rnd) const {
 		Vec3 reflected = r_in.direction().normalize().reflect(rec.normal);
 		scattered = Ray(rec.p, reflected + Vec3::random_in_unit_sphere(rnd) * fuzz);
 		attenuation = albedo;
+		emmisive = Color(0,0,0);
 		return (dot(scattered.direction(), rec.normal) > 0);
 	}
 };
 
+class GlaredLight : public Material {
+private:
+	Vec3 albedo;
+	Color emissive_;
+	double outer_radius_;
+	double inner_radius_;
+	double fuzz;
+public:
+	GlaredLight(const Vec3& a, const Color& e, double r, double r_core, double f) : albedo(a), emissive_(e), outer_radius_(r), inner_radius_(r_core) { if (f < 1) fuzz = f; else fuzz = 1; }
+	virtual bool scatter(const Ray& r_in, const HitRecord& rec, Vec3& attenuation, Color& emmisive, Ray& scattered, my_rand &rnd) const {
+
+		attenuation = Vec3(1, 1, 1);
+		emmisive = Color(0, 0, 0);
+
+		Vec3 center = rec.p - rec.normal * outer_radius_;
+
+		Vec3 start_diff = r_in.origin(); start_diff -= center;
+		if (start_diff.length_sq() <= outer_radius_ * outer_radius_) {
+			// すでに当たっていたらスルー
+			scattered = Ray(rec.p, r_in.direction());
+			return false;
+		}
+
+		Vec3 d = r_in.direction().normalize();
+		double nd = -dot(d, rec.normal);
+		double core_dist = outer_radius_ * sqrt(1.0 - nd * nd) - inner_radius_;
+		if (0.0 < core_dist) {
+			// 内側に当たっていなかったら貫通させる
+			scattered = Ray(rec.p + d * (2.0 * outer_radius_ * nd + 0.001), r_in.direction());
+			attenuation = Vec3(1.0, 1.0, 1.0);
+			emmisive = emissive_ * pow(1.0 - 0.5 * core_dist / (outer_radius_ - inner_radius_), 16);// 外側ほど薄く
+			return false;
+		}
+		else {
+			HitRecord rec_inner;
+			if (hit_sphere(center, inner_radius_, r_in, 0.001, DBL_MAX, rec_inner)) {
+				// 内側に当たったなら発光を付けて金属のように跳ね返す
+				Vec3 reflected = r_in.direction().normalize().reflect(rec_inner.normal);
+				scattered = Ray(rec_inner.p, reflected + Vec3::random_in_unit_sphere(rnd) * fuzz);
+				attenuation = albedo;
+				emmisive = emissive_;
+				return (dot(scattered.direction(), rec.normal) > 0);
+			}
+		}
+
+		return false;
+	}
+};
+
+
+
 class Dielectric : public Material {
 public:
 	Dielectric(float ri) : ref_idx(ri) {}
-	virtual bool scatter(const Ray& r_in, const HitRecord& rec, Vec3& attenuation, Ray& scattered, my_rand &rnd) const {
+	virtual bool scatter(const Ray& r_in, const HitRecord& rec, Vec3& attenuation, Color& emmisive, Ray& scattered, my_rand &rnd) const {
 		Vec3 outward_normal;
 		Vec3 reflected = r_in.direction().reflect(rec.normal);
 		double ni_over_nt;
 		attenuation = Vec3(1.0, 1.0, 1.0);
+		emmisive = Color(0, 0, 0);
 		Vec3 refracted;
 		double reflect_prob;
 		double cosine;
@@ -318,28 +397,9 @@ public:
 	Sphere(Vec3 cen, double r, Material *m) : center_(cen), radius_(r), mat_ptr_(m) {};
 	~Sphere() { if (mat_ptr_)delete mat_ptr_; mat_ptr_ = nullptr; }
 	bool hit(const Ray& r, double tmin, double tmax, HitRecord& rec) const {
-		Vec3 oc = r.origin() - center_;
-		double a = dot(r.direction(), r.direction());
-		double b = dot(oc, r.direction());
-		double c = dot(oc, oc) - radius_*radius_;
-		double discriminant = b*b - a*c;
-		if (0 < discriminant) {
-			double temp = (-b - sqrt(discriminant)) / a;
-			if (temp < tmax && temp > tmin) {
-				rec.t = temp;
-				rec.p = r.get(rec.t);
-				rec.normal = (rec.p - center_) / radius_;
-				rec.mat_ptr = mat_ptr_;
-				return true;
-			}
-			temp = (-b + sqrt(discriminant)) / a;
-			if (temp < tmax && temp > tmin) {
-				rec.t = temp;
-				rec.p = r.get(rec.t);
-				rec.normal = (rec.p - center_) / radius_;
-				rec.mat_ptr = mat_ptr_;
-				return true;
-			}
+		if (hit_sphere(center_, radius_, r, tmin, tmax, rec)) {
+			rec.mat_ptr = mat_ptr_;
+			return true;
 		}
 		return false;
 	}
