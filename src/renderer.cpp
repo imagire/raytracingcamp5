@@ -346,11 +346,11 @@ Color renderer::raytrace(Ray r, int depth, my_rand &rnd)const
 	rec.mat_ptr->scatter(r, rec, attenuation, scattered, rnd);
 	double russian_roulette = max(attenuation.x, max(attenuation.y, attenuation.z));
 
-	if (depth < 5 || russian_roulette < rnd.get()) {
-		return raytrace(scattered, depth + 1, rnd) * attenuation;
+	if (5 <= depth && rnd.get() < russian_roulette) {
+		return 0.0;
 	}
 
-	return 0.0;
+	return raytrace(scattered, depth + 1, rnd) * attenuation;
 }
 
 void renderer::setIBL(int width, int height, const float *image)
