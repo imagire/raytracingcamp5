@@ -186,16 +186,16 @@ image_failed:
 	// log 出力
 	std::ofstream f;
 	f.open("log.txt", std::ios::out);
-	f << "frame count:" << frame << "<br>" << std::endl;
+	f << "frame count:" << frame << "<br>";
 	int idx = 1;
-	f << "memory alloc[ms]:" << t_table[idx++] - t_table[idx - 1] << "<br>" << std::endl;
-	f << "load IBL[ms]:" << t_table[idx++] - t_table[idx - 1] << "<br>" << std::endl;
-	f << "1st_render[ms]:" << t_table[idx++] - t_table[idx - 1] << "<br>" << std::endl;
-	f << "median[ms]:" << t_table[idx++] - t_table[idx - 1] << "<br>" << std::endl;
-	f << "luminance[ms]:" << t_table[idx++] - t_table[idx - 1] << "<br>" << std::endl;
-	f << "edge[ms]:" << t_table[idx++] - t_table[idx - 1] << "<br>" << std::endl;
-	f << "edge_blurred[ms]:" << t_table[idx++] - t_table[idx - 1] << "<br>" << std::endl;
-	f << "normal[ms]:" << t_table[idx++] - t_table[idx - 1] << "<br>" << std::endl;
+	f << "memory alloc[ms]:" << t_table[idx++] - t_table[idx - 1] << "<br>";
+	f << "load IBL[ms]:" << t_table[idx++] - t_table[idx - 1] << "<br>";
+	f << "1st_render[ms]:" << t_table[idx++] - t_table[idx - 1] << "<br>";
+	f << "median[ms]:" << t_table[idx++] - t_table[idx - 1] << "<br>";
+	f << "luminance[ms]:" << t_table[idx++] - t_table[idx - 1] << "<br>";
+	f << "edge[ms]:" << t_table[idx++] - t_table[idx - 1] << "<br>";
+	f << "edge_blurred[ms]:" << t_table[idx++] - t_table[idx - 1] << "<br>";
+	f << "normal[ms]:" << t_table[idx++] - t_table[idx - 1] << "<br>";
 
 	MY_ASSERT(idx == t_table_count);
 
