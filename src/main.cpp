@@ -188,14 +188,14 @@ image_failed:
 	f.open("log.txt", std::ios::out);
 	f << "frame count:" << frame << "<br>";
 	int idx = 1;
-	f << "memory alloc[ms]:" << (double)(t_table[idx] - t_table[idx - 1]) << "<br>"; idx++;
-	f << "load IBL[ms]:" << (double)(t_table[idx] - t_table[idx - 1]) << "<br>"; idx++;
-	f << "1st_render[ms]:" << (double)(t_table[idx] - t_table[idx - 1]) << "<br>"; idx++;
-	f << "median[ms]:" << (double)(t_table[idx] - t_table[idx - 1]) << "<br>"; idx++;
-	f << "luminance[ms]:" << (double)(t_table[idx] - t_table[idx - 1]) << "<br>"; idx++;
-	f << "edge[ms]:" << (double)(t_table[idx] - t_table[idx - 1]) << "<br>"; idx++;
-	f << "edge_blurred[ms]:" << (double)(t_table[idx] - t_table[idx - 1]) << "<br>"; idx++;
-	f << "normal[ms]:" << (double)(t_table[idx] - t_table[idx - 1]) << "<br>"; idx++;
+	f << "memory alloc[sec]:" << (double)(t_table[idx] - t_table[idx - 1]) / CLOCKS_PER_SEC << "<br>"; idx++;
+	f << "load IBL[sec]:" << (double)(t_table[idx] - t_table[idx - 1]) / CLOCKS_PER_SEC << "<br>"; idx++;
+	f << "1st_render[sec]:" << (double)(t_table[idx] - t_table[idx - 1]) / CLOCKS_PER_SEC << "<br>"; idx++;
+	f << "median[sec]:" << (double)(t_table[idx] - t_table[idx - 1]) / CLOCKS_PER_SEC << "<br>"; idx++;
+	f << "luminance[sec]:" << (double)(t_table[idx] - t_table[idx - 1]) / CLOCKS_PER_SEC << "<br>"; idx++;
+	f << "edge[sec]:" << (double)(t_table[idx] - t_table[idx - 1]) / CLOCKS_PER_SEC << "<br>"; idx++;
+	f << "edge_blurred[sec]:" << (double)(t_table[idx] - t_table[idx - 1]) / CLOCKS_PER_SEC << "<br>"; idx++;
+	f << "normal[sec]:" << (double)(t_table[idx] - t_table[idx - 1]) / CLOCKS_PER_SEC << "<br>"; idx++;
 
 	MY_ASSERT(idx == t_table_count);
 
