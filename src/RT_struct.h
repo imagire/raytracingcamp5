@@ -88,10 +88,10 @@ public:
 	void set(double r0, double g0, double b0) { r = r0; g = g0; b = b0;}
 
 	inline Color &operator=(const Color &c) { r = c.r; g = c.g; b = c.b; return *this; }
-	inline Color &operator+=(const Color &c) { r += c.r; g += c.g; b += c.b; }
-	inline Color &operator-=(const Color &c) { r -= c.r; g -= c.g; b -= c.b; }
-	inline Color &operator*=(const Color &c) { r *= c.r; g *= c.g; b *= c.b; }
-	inline Color &operator/=(const Color &c) { r /= c.r; g /= c.g; b /= c.b; }
+	inline Color &operator+=(const Color &c) { r += c.r; g += c.g; b += c.b; return *this;}
+	inline Color &operator-=(const Color &c) { r -= c.r; g -= c.g; b -= c.b; return *this;}
+	inline Color &operator*=(const Color &c) { r *= c.r; g *= c.g; b *= c.b; return *this;}
+	inline Color &operator/=(const Color &c) { r /= c.r; g /= c.g; b /= c.b; return *this;}
 	inline const Color operator+(const Color &c) const { return Color(r + c.r, g + c.g, b + c.b); }
 	inline const Color operator-(const Color &c) const { return Color(r - c.r, g - c.g, b - c.b); }
 	inline const Color operator*(const Color &c) const { return Color(r * c.r, g * c.g, b * c.b); }
@@ -146,10 +146,12 @@ public:
 	inline const T *ref(int idx) const { return a_buf + idx; }
 
 	static inline const ByteColor getRGB(double &v, double scale) { double d = v * scale; d = (1.0 < d) ? 1.0 : d; unsigned char c = (unsigned char)(255.9999999*d); return ByteColor(c, c, c); }
-	static inline const ByteColor getRGB(Vec3 &v, double scale) { Vec3 d = v * scale; 
-	d.x = (1.0 < d.x) ? 1.0 : d.x; d.y = (1.0 < d.y) ? 1.0 : d.y; d.z = (1.0 < d.z) ? 1.0 : d.z;
-	d.x = (d.x<-1.0) ? -1.0 : d.x; d.y = (d.y<-1.0) ? -1.0 : d.y; d.z = (d.z<-1.0) ? -1.0 : d.z;
-	return ByteColor((unsigned char)(255.99*(d.x*0.5 + 0.5)), (unsigned char)(255.99*(d.y*0.5 + 0.5)), (unsigned char)(255.99*(d.z*0.5 + 0.5))); }
+	static inline const ByteColor getRGB(Vec3 &v, double scale) {
+		Vec3 d = v * scale;
+		d.x = (1.0 < d.x) ? 1.0 : d.x; d.y = (1.0 < d.y) ? 1.0 : d.y; d.z = (1.0 < d.z) ? 1.0 : d.z;
+		d.x = (d.x<-1.0) ? -1.0 : d.x; d.y = (d.y<-1.0) ? -1.0 : d.y; d.z = (d.z<-1.0) ? -1.0 : d.z;
+		return ByteColor((unsigned char)(255.99*(d.x*0.5 + 0.5)), (unsigned char)(255.99*(d.y*0.5 + 0.5)), (unsigned char)(255.99*(d.z*0.5 + 0.5)));
+	}
 	static inline const ByteColor getRGB(Color &v, double scale) { return v.getRGB(scale); }
 	static inline const ByteColor getRGB(ByteColor &v, double scale) {
 		double r = scale*(double)v.r(); double g = scale*(double)v.g(); double b = scale*(double)v.b();
@@ -321,7 +323,7 @@ public:
 		double b = dot(oc, r.direction());
 		double c = dot(oc, oc) - radius_*radius_;
 		double discriminant = b*b - a*c;
-		if (discriminant > 0) {
+		if (0 < discriminant) {
 			double temp = (-b - sqrt(discriminant)) / a;
 			if (temp < tmax && temp > tmin) {
 				rec.t = temp;

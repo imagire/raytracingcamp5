@@ -6,7 +6,9 @@
 #include "hdrloader.h"
 #include "renderer.h"
 
-
+#ifndef max
+#define max(a,b) (((a)>(b))?(a):(b))
+#endif // max
 
 bool IBL::initialize(int w, int h, const float *p)
 {
@@ -322,27 +324,33 @@ renderer::~renderer()
 
 Color renderer::raytrace(Ray r, int depth, my_rand &rnd)const
 {
-	// for debugging
+	// Hack(for debugging)
 //	return Vec3(0,0,0);
 //	return Vec3(rand_.get(), rand_.get(), rand_.get());
 
 	HitRecord rec;
-	if (scene_.hit(r, 0.001, DBL_MAX, rec)) {
-		Ray scattered;
-		Vec3 attenuation;
-		if (depth < 50 && rec.mat_ptr->scatter(r, rec, attenuation, scattered, rnd)) {
-			return raytrace(scattered, depth + 1, rnd) * attenuation;
-		}
-		else {
-			return Color();
-		}
-	}
-	else {
+	if (!scene_.hit(r, 0.001, DBL_MAX, rec)) {
+		// 交差しなければ、IBLを読み込む
 		Vec3 unit_direction = r.direction().normalize();
+		return ibl_.get(r.direction().normalize());
+
+		// Hack(IBL がないときの適当な色)
 //		double t = 0.5*(unit_direction.y + 1.0);
 //		return (1.0 - t)*Vec3(1.0, 1.0, 1.0) + t * Vec3(0.5, 0.7, 1.0);
-		return ibl_.get(r.direction().normalize());
 	}
+	
+	Ray scattered;
+	Vec3 attenuation;
+	if (50 <= depth) return 0.0;
+
+	rec.mat_ptr->scatter(r, rec, attenuation, scattered, rnd);
+	double russian_roulette = max(attenuation.x, max(attenuation.y, attenuation.z));
+
+	if (depth < 5 || russian_roulette < rnd.get()) {
+		return raytrace(scattered, depth + 1, rnd) * attenuation;
+	}
+
+	return 0.0;
 }
 
 void renderer::setIBL(int width, int height, const float *image)
@@ -350,11 +358,12 @@ void renderer::setIBL(int width, int height, const float *image)
 	ibl_.initialize(width, height, image);
 }
 
-void renderer::update(const RenderTarget<Color> *src, RenderTarget<Color> *dest, const RenderTarget<Vec3> *normal_map)const
+void renderer::update(const RenderTarget<Color> *src, RenderTarget<Color> *dest, const RenderTarget<Vec3> *normal_map, int SUPER_SAMPLES) const
 {
 	const double INV_WIDTH = 1.0 / (double)WIDTH;
 	const double INV_HEIGHT = 1.0 / (double)HEIGHT;
-	
+	const double INV_SUPER_SAMPLES = 1.0 / (double)SUPER_SAMPLES;
+
 	clock_t start = clock();
 
 	#pragma omp parallel
@@ -364,17 +373,24 @@ void renderer::update(const RenderTarget<Color> *src, RenderTarget<Color> *dest,
 		for (int y = 0; y < HEIGHT; y++) {
 			int index = normal_map->getIdx(0, y);
 			for (int x = 0; x < WIDTH; x++) {
+				Color color;
 				const Vec3 n = normal_map->get(index);
 
-				const double GAZE_SCALE = 10000.0;
+				for (int sy = 0; sy < SUPER_SAMPLES; sy++) {
+					for (int sx = 0; sx < SUPER_SAMPLES; sx++) {
 
-				double u = ((double)x + rnd.get() + GAZE_SCALE * n.x) * INV_WIDTH;
-				double v = ((double)y + rnd.get() + GAZE_SCALE * n.y) * INV_HEIGHT;
+						const double GAZE_SCALE = 10000.0;
 
-				Ray r = cam_.get_ray(u, 1.0 - v, rnd);// 画像的に上下逆だったので、vを反転する
-//				Ray r = cam_.get_ray(u, 1.0 - v, rnd, Vec3(-10.0 * n[0], 10.0 * n[1], n[2]));// 画像的に上下逆だったので、vを反転する
-				Color color = raytrace(r, 0, rnd);
+		//				double u = ((double)x + rnd.get() + GAZE_SCALE * n.x) * INV_WIDTH;
+		//				double v = ((double)y + rnd.get() + GAZE_SCALE * n.y) * INV_HEIGHT;
+						double u = ((double)x + INV_SUPER_SAMPLES*(double)sx + 0.5 * INV_SUPER_SAMPLES + GAZE_SCALE * n.x) * INV_WIDTH;
+						double v = ((double)y + INV_SUPER_SAMPLES*(double)sy + 0.5 * INV_SUPER_SAMPLES + GAZE_SCALE * n.y) * INV_HEIGHT;
 
+						Ray r = cam_.get_ray(u, 1.0 - v, rnd);// 画像的に上下逆だったので、vを反転する
+		//				Ray r = cam_.get_ray(u, 1.0 - v, rnd, Vec3(-10.0 * n[0], 10.0 * n[1], n[2]));// 画像的に上下逆だったので、vを反転する
+						color += raytrace(r, 0, rnd) * INV_SUPER_SAMPLES * INV_SUPER_SAMPLES;
+					}
+				}
 				dest->set(index, src->get(index) + color);
 				index++;
 			}

@@ -28,7 +28,7 @@ public:
 
 	inline double get() {
 		uint64_t i = (((uint64_t)get_i() << 20) | (uint64_t)0x3FF0000000000000);
-		return (*(double*)&i) - 1.0f;
+		return (*(double*)&i) - 1.0;
 	}
 };
 

@@ -88,7 +88,7 @@ int main()
 	t_table[t_table_count++] = clock();
 
 	// 初期描画
-	pRenderer->update(fb[1 - current], fb[current], RT_normal);
+	pRenderer->update(fb[1 - current], fb[current], RT_normal, 1);
 	fb[current]->resolve(image);
 	save(image, "1st_render.png");
 	current = 1 - current;
@@ -140,7 +140,8 @@ int main()
 	do
 	{
 		// fb[1-current] を読み込んで fb[current]にレンダリング
-		pRenderer->update(fb[1 - current], fb[current], RT_normal);
+		const int SUPER_SAMPLES = 2;
+		pRenderer->update(fb[1 - current], fb[current], RT_normal, SUPER_SAMPLES);
 		frame++;
 
 		// 4分33秒以内に終了なので、前のフレームを考えてオーバーしそうならば終了する

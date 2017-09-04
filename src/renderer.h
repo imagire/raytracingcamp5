@@ -57,7 +57,7 @@ public:
 	
 	void setIBL(int width, int height, const float *image);
 
-	void update(const RenderTarget<Color> *src, RenderTarget<Color> *dest, const RenderTarget<Vec3> *normal_map)const;// なるべく早く出ること
+	void update(const RenderTarget<Color> *src, RenderTarget<Color> *dest, const RenderTarget<Vec3> *normal_map, int SUPER_SAMPLES)const;// なるべく早く出ること
 	
 	static void copy(const RenderTarget<Color> &src, RenderTarget<Color> &dest);
 	static void median_filter(const RenderTarget<Color> &src, RenderTarget<Color> &dest);
